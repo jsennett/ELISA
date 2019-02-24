@@ -1,0 +1,24 @@
+unified cache: 
+    data and instructions in the same cache
+
+direct map:
+    memory addresses are mapped to cache lines using: (address mod cache_size)
+    cache index contains implicit lower bits of memory address
+    cache offset contains offset for the word in cache
+    cache tag contains the remaining identifier bits to map back to memory address
+
+block size: 
+    4 words (32-bits each) per block/line
+
+RAM:
+    
+2^32 address space for RAM (4 GB)
+L1 cache: 8 kb
+
+            2^5 = 32 address space
+
+
+write-through or write-back:
+    
+    First, implement write-through.
+    
