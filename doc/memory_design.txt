@@ -22,3 +22,9 @@ write-through or write-back:
     
     First, implement write-through.
     
+Questions:
+
+1. 1 dirty bit per line if multiple words? 
+2. Do you write whole line back or just the word?
+3. How do you signal that a cache line is newly initialized, not a line of 0s?
+    (how should we code this if it's normally implemented in hardware?)
