@@ -5,15 +5,19 @@ Yash Adhikari
 CS 535
 
 """
+import pprint 
+import sys
+
 
 cycle = 1
 def reset_cycle():
     global cycle
     cycle = 1
 
+
 class Memory:
 
-    def __init__(self, lines, words_per_read=4, delay=10, noisy=False):
+    def __init__(self, lines, words_per_read=4, delay=10, noisy=False, name="Memory"):
         self.lines = lines
         self.bits_per_line = lines.bit_length() - 1
         self.words_per_read = words_per_read
@@ -22,6 +26,7 @@ class Memory:
         self.initial_delay = delay
         self.current_delay = delay
         self.noisy = noisy
+        self.name = name
 
     def get_data(self):
         return self.data
@@ -53,14 +58,15 @@ class Memory:
             self.current_delay = self.initial_delay
             self.data[memory_address] = value
 
-    def __str__(self):
-        # TODO: nicely format a string
-        pass
+    def print_data(self):
+        # TODO - don't hard code field length
+        for idx, line in enumerate(self.data):
+            pprint.pprint('{:0{x}b} - {:032b}'.format(idx, line, x=self.bits_per_line))
 
 
 class Cache:
 
-    def __init__(self, lines, words_per_line=4, delay=3, address_length=8, next_level=None, top_level=False, noisy=False):
+    def __init__(self, lines, words_per_line=4, delay=3, address_length=8, next_level=None, top_level=False, noisy=False, name="Cache"):
         self.lines = lines
         self.words_per_line = words_per_line
         self.address_length = address_length
@@ -72,6 +78,7 @@ class Cache:
         self.current_delay = delay
         self.top_level = top_level
         self.noisy = noisy
+        self.name = name
 
         self.data = [[0] * 5 + [1]] * lines
         print("Cache created; {} lines, {} words per line".format(self.lines, self.words_per_line))
@@ -147,6 +154,15 @@ class Cache:
         while response == "wait":
             response = self.next_level.write(memory_address, value)
 
+    def print_data(self):
+        # TODO - don't hard code field length
+
+        for idx, line in enumerate(self.data):
+            formatted_line = '{:0{tag}b}'.format(idx, tag=self.bits_per_tag)
+            for offset in range(self.words_per_line):
+                formatted_line += ' - {:032b}'.format(line[offset+1])
+            formatted_line += ' - {:01b}'.format(line[self.words_per_line + 1])            
+            print(formatted_line)
 
 class MemoryDemo:
 
@@ -155,22 +171,44 @@ class MemoryDemo:
         assert(type(memory_heirarchy) == list and len(memory_heirarchy) > 0)
         self.memory_heirarchy = memory_heirarchy
 
-    def execute(self, instructions):
+    def execute_instructions(self, filename):
+
+        # If an assembly file is specified, get instructions from file
+        if filename is not None:
+            instructions = self.parse_asm(filename)
+            for instruction in instructions:
+                self.execute(instruction)
+                input("    [Press Enter to move to the next instruction]")
+
+        # If no aseembly file is specified, get instructions from user
+        else:
+            self.help()
+            while True:
+                instruction = input(">>> ").split()
+                if len(instruction) == 0:
+                    continue
+                self.execute(instruction)
+
+    def execute(self, instruction):
         global cycle
 
-        for instruction in instructions:
+        # Execute instructions until completed.
+        start_time = cycle
+        if instruction[0] == "load":
+            response = self.load(int(instruction[1], 2))
+            print(" ".join(instruction), "- value {:032b} loaded from address {} in {} cycles.".format(response, instruction[1], cycle - start_time))
+        elif instruction[0] == "store":
+            self.store(int(instruction[1], 2), int(instruction[2], 2))
+            print(" ".join(instruction), "- value {} stored to address {} in {} cycles.".format(instruction[2], instruction[1], cycle - start_time))
+        elif instruction[0] == "show":
+            for level in self.memory_heirarchy:
+                if level.name == instruction[1]:
+                    level.print_data()
+        elif instruction[0] == "quit":
+            sys.exit(0)
+        else:
+            self.help()
 
-            start_time = cycle
-            arguments = instruction.split()
-
-            if arguments[0] == "load":
-                response = self.load(int(arguments[1], 2))
-                print(instruction, "- value {:032b} loaded from address {} in {} cycles.".format(response, arguments[1], cycle - start_time))
-            elif arguments[0] == "store":
-                self.store(int(arguments[1], 2), int(arguments[2], 2))
-                print(instruction, "- value {} stored to address {} in {} cycles.".format(arguments[2], arguments[1], cycle - start_time))
-
-            start_time = cycle
 
     def load(self, memory_address):
         response = "wait"
@@ -178,11 +216,24 @@ class MemoryDemo:
             response = self.memory_heirarchy[0].read(memory_address)
         return response
 
-
     def store(self, memory_address, value):
         response = "wait"
         while response == "wait":
             response = self.memory_heirarchy[0].write(memory_address, value)
+
+    def parse_asm(self, filename):
+        with open(filename) as f:
+            instructions = [line.split() for line in f.read().split('\n') if line != '']
+        return instructions
+
+    def help(self):
+        print("******** How to specify instructions: ********")
+        print("    load  <ADDRESS>                |    load a value from memory")
+        print("    store <ADDRESS> <VALUE>        |    store value in memory")
+        print("    show  <CACHE_NAME>             |    show contents of memory or cache named <CACHE_NAME>")
+        print("    help                           |    show help messages")
+        print("    quit                           |    quit")
+
 
     def __str__(self):
         # TODO: nicely format a string
