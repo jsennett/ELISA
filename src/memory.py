@@ -6,6 +6,8 @@ CS 535
 
 """
 
+import random
+
 cycle = 1
 def reset_cycle():
     global cycle
@@ -59,22 +61,23 @@ class Memory:
 
 
 class Cache:
-
-    def __init__(self, lines, words_per_line=4, delay=3, address_length=8, next_level=None, top_level=False, noisy=False):
+    
+    def __init__(self, lines, associativity=2, words_per_line=4, delay=3, address_length=8, next_level=None, top_level=False, noisy=False):
         self.lines = lines
         self.words_per_line = words_per_line
+        self.associativity = associativity
         self.address_length = address_length
-        self.bits_per_tag = (address_length-1).bit_length()
-        self.bits_per_index = (lines - 1).bit_length()
+        self.bits_per_index = (lines//associativity - 1).bit_length()
         self.bits_per_offset = (words_per_line - 1).bit_length()
+        self.bits_per_tag = address_length - self.bits_per_index - self.bits_per_offset
         self.next_level = next_level
         self.initial_delay = delay
         self.current_delay = delay
         self.top_level = top_level
         self.noisy = noisy
 
-        self.data = [[0] * 5 + [1]] * lines
-        print("Cache created; {} lines, {} words per line".format(self.lines, self.words_per_line))
+        self.data = [[0] * (words_per_line+1) + [0]] * lines
+        print("Cache created; {} lines, {} words per line; {} associativity".format(self.lines, self.words_per_line, self.associativity))
         print("{} bits per tag, {} bits per index, {} bits per offset".format(self.bits_per_tag, self.bits_per_index, self.bits_per_offset))
 
     def get_data(self):
@@ -82,20 +85,7 @@ class Cache:
 
     def read(self, memory_address):
         global cycle
-
-        tag, index, offset = self.parse_address(memory_address)
-
-        # Cache miss / invalid
-        if self.data[index][5] != 0 or self.data[index][0] != tag:
-
-            response = "wait"
-            while response == "wait":
-                response = self.next_level.read(memory_address)
-
-            # Update
-            self.data[index][0] = tag           # Update the tag
-            self.data[index][1:5] = response    # Update the cache
-            self.data[index][5] = 0             # Set the invalid bit to valid
+        print("read() at delay", self.current_delay)
 
         # The data is now in cache
         if self.noisy:
@@ -105,11 +95,70 @@ class Cache:
         if self.current_delay > 0:
             return "wait"
         else:
+
+            tag, index, offset = self.parse_address(memory_address)
+            start_index = index*self.associativity
+            end_index = start_index + self.associativity
+            
+            # Cache miss / invalid
+            tag_in_set = False
+            invalid_in_set = False
+            row_location = None
+            for row_index in range(start_index, end_index):
+                print("checking row with contents:", self.data[row_index], "at index", row_index)
+                
+                # If we haven't found an invalid row yet, and if the current row is invalid
+                if not invalid_in_set and self.data[row_index][5] == 0:
+                    first_invalid_row = row_index
+                    invalid_in_set = True
+                
+                # Tag is in the set, but may be valid or invalid
+                if self.data[row_index][0] == tag:
+                    tag_in_set = True
+                    row_location = row_index
+                    row_is_valid = (self.data[row_index][5] == 1)                    
+                    
+            print("row location", row_location)
+            print("tag in set?", tag_in_set, "invalid in set?", invalid_in_set)
+                
+            # Cache miss - the tag is not in the set, or the tag is in set but invalid            
+            if not tag_in_set or not row_is_valid:          
+                print("cache miss.")
+    
+                response = "wait"
+                while response == "wait":
+                    response = self.next_level.read(memory_address)
+                
+                # If the 
+                if invalid_in_set:
+                    print("there is an empty row in the set")
+                    row_location = first_invalid_row
+                    # print(row_location)
+                else:
+                    row_location = random.randrange(start_index, end_index)
+                    print("all rows in set are full. Putting at row", row_location)
+                    
+                print("before", self.data)
+                print("Updating row", row_location, "to have tag", tag)
+                print('\n', self.data[row_location][0])
+                print(self.data[row_location][1:5])
+                print(self.data[row_location][5], '\n')
+                self.data[row_location][0] = tag           # Update the tag
+                self.data[row_location][1:5] = response    # Update the cache
+                self.data[row_location][5] = 1             # Set the invalid bit to valid
+                print("after", self.data)
+
             self.current_delay = self.initial_delay
+            
             if self.top_level:
-                return self.data[index][offset + 1]
+                
+                # for debugging:
+                for row_index in range(start_index, end_index):
+                    print(self.data[row_index], row_index)
+                
+                return self.data[row_location][offset + 1]
             else:
-                return self.data[index][1:5]
+                return self.data[row_location][1:5]
 
     def parse_address(self, memory_address):
         tag = memory_address >> (self.address_length - self.bits_per_tag)
@@ -139,7 +188,7 @@ class Cache:
                 return "wait"
             else:
                 self.data[index][offset + 1] = value        # Update the cache
-                self.data[index][5] = 0                     # Set the invalid bit to valid
+                self.data[index][5] = 1                     # Set the invalid bit to valid
                 self.current_delay = self.initial_delay     # Reset the current delay
 
         # In either case, write to memory
