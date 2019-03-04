@@ -16,7 +16,7 @@ import os
 def main():
 
     # Clear the screen
-    # os.system('cls||clear')
+    os.system('cls||clear')
 
     # Get command line arguments
     args = sys.argv
