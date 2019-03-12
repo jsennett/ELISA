@@ -37,4 +37,23 @@ status, etc.) and memory (main and cache) in hexadecimal, loading a program from
 file, and stepping through it to see how the state changes. At this point, you will have all
 of the major components of the simulator working.
 """
+from PyQt5 import QtWidgets
+from mainwindow import Ui_mainwindow
+import sys
 
+class ApplicationWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super(ApplicationWindow, self).__init__()
+
+        self.ui = Ui_mainwindow()
+        self.ui.setupUi(self)
+
+
+def main():
+    app = QtWidgets.QApplication(sys.argv)
+    application = ApplicationWindow()
+    application.show()
+    sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
