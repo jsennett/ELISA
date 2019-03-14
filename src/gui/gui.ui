@@ -271,14 +271,14 @@
   <widget class="QPushButton" name="resetButton">
    <property name="geometry">
     <rect>
-     <x>640</x>
+     <x>682</x>
      <y>504</y>
-     <width>113</width>
+     <width>151</width>
      <height>32</height>
     </rect>
    </property>
    <property name="text">
-    <string>Reset</string>
+    <string>Clear Instructions</string>
    </property>
   </widget>
   <widget class="QLabel" name="currentCycleLabel">
@@ -612,6 +612,9 @@
      <height>231</height>
     </rect>
    </property>
+   <property name="autoFillBackground">
+    <bool>true</bool>
+   </property>
    <property name="title">
     <string>GroupBox</string>
    </property>
@@ -898,6 +901,9 @@
        </item>
        <item>
         <widget class="QComboBox" name="L2WordsPerLine">
+         <property name="currentText">
+          <string/>
+         </property>
          <item>
           <property name="text">
            <string>1</string>
@@ -926,6 +932,11 @@
          <item>
           <property name="text">
            <string>32</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string/>
           </property>
          </item>
         </widget>
@@ -1097,7 +1108,7 @@
        <item>
         <widget class="QLineEdit" name="L3Lines">
          <property name="text">
-          <string>128</string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -1114,6 +1125,9 @@
        </item>
        <item>
         <widget class="QComboBox" name="L3WordsPerLine">
+         <property name="currentText">
+          <string/>
+         </property>
          <item>
           <property name="text">
            <string>1</string>
@@ -1144,6 +1158,11 @@
            <string>32</string>
           </property>
          </item>
+         <item>
+          <property name="text">
+           <string/>
+          </property>
+         </item>
         </widget>
        </item>
       </layout>
@@ -1160,7 +1179,7 @@
        <item>
         <widget class="QLineEdit" name="L3Cycles">
          <property name="text">
-          <string>3</string>
+          <string/>
          </property>
         </widget>
        </item>
@@ -1235,6 +1254,28 @@
      <string>Pipelining Enabled</string>
     </property>
    </widget>
+   <widget class="QLineEdit" name="status">
+    <property name="geometry">
+     <rect>
+      <x>540</x>
+      <y>200</y>
+      <width>301</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="autoFillBackground">
+     <bool>true</bool>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
+    </property>
+   </widget>
   </widget>
   <widget class="QLabel" name="NCyclesLabel">
    <property name="geometry">
@@ -1275,7 +1316,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>1</string>
+    <string/>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
@@ -1305,12 +1346,12 @@
     <rect>
      <x>530</x>
      <y>504</y>
-     <width>113</width>
+     <width>151</width>
      <height>32</height>
     </rect>
    </property>
    <property name="text">
-    <string>Load</string>
+    <string>Load Instructions</string>
    </property>
   </widget>
   <widget class="QLabel" name="programCounterLabel">
