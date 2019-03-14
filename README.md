@@ -12,7 +12,8 @@ The goal of this project is to build a custom instruction set simulator with a f
 `python3 src/memory_demo.py`
 
 ### Graphical User Interface
-`python3 src/gui/gui.py`
+`cd src/`
+`python3 gui/gui.py`
 
 ### Simulator Demo
 `python3 src/simulator_demo.py`
@@ -21,3 +22,6 @@ The goal of this project is to build a custom instruction set simulator with a f
 
 ### Rebuild the GUI
 `pyuic5 src/gui/gui.ui -o src/gui/mainwindow.py`
+
+## How to test
+`pytest`
