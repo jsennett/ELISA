@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1381</width>
+    <width>1384</width>
     <height>870</height>
    </rect>
   </property>
@@ -16,8 +16,8 @@
   <widget class="QPushButton" name="stepButton">
    <property name="geometry">
     <rect>
-     <x>540</x>
-     <y>570</y>
+     <x>530</x>
+     <y>574</y>
      <width>111</width>
      <height>32</height>
     </rect>
@@ -76,7 +76,7 @@
    <property name="geometry">
     <rect>
      <x>1140</x>
-     <y>550</y>
+     <y>560</y>
      <width>191</width>
      <height>32</height>
     </rect>
@@ -97,365 +97,6 @@
    <property name="orientation">
     <enum>Qt::Horizontal</enum>
    </property>
-  </widget>
-  <widget class="QCheckBox" name="pipelineEnabledButton">
-   <property name="geometry">
-    <rect>
-     <x>1150</x>
-     <y>790</y>
-     <width>141</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Pipelining Enabled</string>
-   </property>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>530</x>
-     <y>650</y>
-     <width>181</width>
-     <height>155</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="L1">
-    <item>
-     <widget class="QCheckBox" name="L1Enabled">
-      <property name="text">
-       <string>L1 Cache Enabled</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L1AssociativityLayout">
-      <item>
-       <widget class="QLabel" name="L1AssociativityLabel">
-        <property name="text">
-         <string>Assoc.</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="L1Associativity">
-        <item>
-         <property name="text">
-          <string>Direct-Mapped</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>2-Way</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>4-Way</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>8-Way</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>16-Way</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>32-Way</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>N-Way</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L1LinesLayout">
-      <item>
-       <widget class="QLabel" name="L1LinesLabel">
-        <property name="text">
-         <string># Lines</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="L1Lines">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L1WordsPerLineLayout">
-      <item>
-       <widget class="QLabel" name="L1WordsPerLineLabel">
-        <property name="text">
-         <string>Words/Line</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="L1WordsPerLine"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L1CyclesLayout">
-      <item>
-       <widget class="QLabel" name="L1CyclesLabel">
-        <property name="text">
-         <string># Cycles</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="L1Cycles">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_2">
-   <property name="geometry">
-    <rect>
-     <x>730</x>
-     <y>650</y>
-     <width>181</width>
-     <height>155</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="L2">
-    <item>
-     <widget class="QCheckBox" name="L2Enabled">
-      <property name="text">
-       <string>L2 Cache Enabled</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L2AssociativityLayout">
-      <item>
-       <widget class="QLabel" name="L2AssociativityLabel">
-        <property name="text">
-         <string>Assoc.</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="L2Associativity"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L2LinesLayout">
-      <item>
-       <widget class="QLabel" name="L2LinesLabel">
-        <property name="text">
-         <string># Lines</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="L2Lines">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L2WordsPerLineLayout">
-      <item>
-       <widget class="QLabel" name="L2WordsPerLineLabel">
-        <property name="text">
-         <string>Words/Line</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="L2WordsPerLine"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L2CyclesLayout">
-      <item>
-       <widget class="QLabel" name="L2CyclesLabel">
-        <property name="text">
-         <string># Cycles</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="L2Cycles">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_3">
-   <property name="geometry">
-    <rect>
-     <x>930</x>
-     <y>650</y>
-     <width>181</width>
-     <height>155</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="L3">
-    <item>
-     <widget class="QCheckBox" name="L3Enabled">
-      <property name="text">
-       <string>L3 Cache Enabled</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L3AssociativityLayout">
-      <item>
-       <widget class="QLabel" name="L3AssociativityLabel">
-        <property name="text">
-         <string>Assoc.</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="L3Associativity"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L3LinesLayout">
-      <item>
-       <widget class="QLabel" name="L3LinesLabel">
-        <property name="text">
-         <string># Lines</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="L3Lines">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L3WordsPerLineLayout">
-      <item>
-       <widget class="QLabel" name="L3WordsPerLineLabel">
-        <property name="text">
-         <string>Words/Line</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="L3WordsPerLine"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="L3CyclesLayout">
-      <item>
-       <widget class="QLabel" name="L3CyclesLabel">
-        <property name="text">
-         <string># Cycles</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="L3Cycles">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QPushButton" name="setConfigurationButton">
-   <property name="geometry">
-    <rect>
-     <x>820</x>
-     <y>820</y>
-     <width>201</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Set Configuration</string>
-   </property>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_4">
-   <property name="geometry">
-    <rect>
-     <x>1150</x>
-     <y>720</y>
-     <width>211</width>
-     <height>61</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="memory">
-    <item>
-     <layout class="QHBoxLayout" name="memoryLinesLayout">
-      <item>
-       <widget class="QLabel" name="memoryLinesLabel">
-        <property name="text">
-         <string>Memory Address Space: 2^</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="memoryLines">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="memoryCyclesLayout">
-      <item>
-       <widget class="QLabel" name="memoryCyclesLabel">
-        <property name="text">
-         <string># Cycles to access Memory</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="memoryCycles">
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
   </widget>
   <widget class="QLabel" name="title">
    <property name="geometry">
@@ -509,44 +150,24 @@
     <string>Export</string>
    </property>
   </widget>
-  <widget class="QLabel" name="currentBreakpointsLabel_2">
+  <widget class="QLabel" name="currentBreakpointsLabel">
    <property name="geometry">
     <rect>
-     <x>970</x>
+     <x>980</x>
      <y>550</y>
      <width>131</width>
      <height>21</height>
     </rect>
    </property>
    <property name="text">
-    <string>Current Breakpoints</string>
-   </property>
-  </widget>
-  <widget class="QTextBrowser" name="currentBreakpoints_2">
-   <property name="geometry">
-    <rect>
-     <x>960</x>
-     <y>570</y>
-     <width>141</width>
-     <height>61</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QTextEdit" name="addBreakpointTextbox">
-   <property name="geometry">
-    <rect>
-     <x>910</x>
-     <y>560</y>
-     <width>41</width>
-     <height>21</height>
-    </rect>
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Current Breakpoints&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
   <widget class="QPushButton" name="addBreakpointButton">
    <property name="geometry">
     <rect>
      <x>760</x>
-     <y>560</y>
+     <y>554</y>
      <width>141</width>
      <height>32</height>
     </rect>
@@ -555,11 +176,11 @@
     <string>Add Breakpoint</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="addBreakpointButton_2">
+  <widget class="QPushButton" name="stepNCyclesButton">
    <property name="geometry">
     <rect>
-     <x>540</x>
-     <y>600</y>
+     <x>530</x>
+     <y>604</y>
      <width>121</width>
      <height>32</height>
     </rect>
@@ -568,17 +189,7 @@
     <string>Step N cycles</string>
    </property>
   </widget>
-  <widget class="QTextBrowser" name="addBreakpointTextbox_2">
-   <property name="geometry">
-    <rect>
-     <x>670</x>
-     <y>606</y>
-     <width>51</width>
-     <height>21</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="exportButton_2">
+  <widget class="QPushButton" name="resetButton">
    <property name="geometry">
     <rect>
      <x>1200</x>
@@ -591,73 +202,7 @@
     <string>Reset</string>
    </property>
   </widget>
-  <widget class="QLabel" name="L2AssociativityLabel_2">
-   <property name="geometry">
-    <rect>
-     <x>1150</x>
-     <y>650</y>
-     <width>121</width>
-     <height>26</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Write Policy:</string>
-   </property>
-  </widget>
-  <widget class="QComboBox" name="L2Associativity_2">
-   <property name="geometry">
-    <rect>
-     <x>1230</x>
-     <y>650</y>
-     <width>131</width>
-     <height>26</height>
-    </rect>
-   </property>
-   <item>
-    <property name="text">
-     <string>Write-through</string>
-    </property>
-   </item>
-   <item>
-    <property name="text">
-     <string>Write-back</string>
-    </property>
-   </item>
-  </widget>
-  <widget class="QLabel" name="L2AssociativityLabel_3">
-   <property name="geometry">
-    <rect>
-     <x>1150</x>
-     <y>680</y>
-     <width>121</width>
-     <height>26</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Eviction Policy:</string>
-   </property>
-  </widget>
-  <widget class="QComboBox" name="L2Associativity_3">
-   <property name="geometry">
-    <rect>
-     <x>1250</x>
-     <y>680</y>
-     <width>111</width>
-     <height>26</height>
-    </rect>
-   </property>
-   <item>
-    <property name="text">
-     <string>LRU</string>
-    </property>
-   </item>
-   <item>
-    <property name="text">
-     <string>Random</string>
-    </property>
-   </item>
-  </widget>
-  <widget class="QLabel" name="currentBreakpointsLabel_3">
+  <widget class="QLabel" name="currentCycleLabel">
    <property name="geometry">
     <rect>
      <x>550</x>
@@ -670,21 +215,11 @@
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;Current Cycle:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
-  <widget class="QTextBrowser" name="currentBreakpoints_3">
-   <property name="geometry">
-    <rect>
-     <x>670</x>
-     <y>550</y>
-     <width>41</width>
-     <height>20</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="stepBreakpointButton_2">
+  <widget class="QPushButton" name="stepCompletionButton">
    <property name="geometry">
     <rect>
      <x>1140</x>
-     <y>580</y>
+     <y>590</y>
      <width>191</width>
      <height>32</height>
     </rect>
@@ -696,10 +231,10 @@
   <widget class="Line" name="line">
    <property name="geometry">
     <rect>
-     <x>733</x>
+     <x>740</x>
      <y>550</y>
      <width>31</width>
-     <height>71</height>
+     <height>81</height>
     </rect>
    </property>
    <property name="orientation">
@@ -1329,12 +864,12 @@
      </column>
      <item row="0" column="0">
       <property name="text">
-       <string>01101001011010010110100101101001</string>
+       <string/>
       </property>
      </item>
      <item row="0" column="1">
       <property name="text">
-       <string>01101001011010010110100101101001</string>
+       <string/>
       </property>
      </item>
     </widget>
@@ -1623,7 +1158,7 @@
     <rect>
      <x>20</x>
      <y>70</y>
-     <width>208</width>
+     <width>229</width>
      <height>26</height>
     </rect>
    </property>
@@ -1656,11 +1191,11 @@
     </item>
    </layout>
   </widget>
-  <widget class="QPushButton" name="addBreakpointButton_3">
+  <widget class="QPushButton" name="removeBreakpointButton">
    <property name="geometry">
     <rect>
      <x>760</x>
-     <y>590</y>
+     <y>594</y>
      <width>141</width>
      <height>32</height>
     </rect>
@@ -1669,40 +1204,722 @@
     <string>Remove Breakpoint</string>
    </property>
   </widget>
-  <widget class="QTextEdit" name="addBreakpointTextbox_3">
-   <property name="geometry">
-    <rect>
-     <x>910</x>
-     <y>590</y>
-     <width>41</width>
-     <height>21</height>
-    </rect>
-   </property>
-  </widget>
   <widget class="Line" name="line_3">
    <property name="geometry">
     <rect>
-     <x>1100</x>
+     <x>1120</x>
      <y>550</y>
      <width>31</width>
-     <height>71</height>
+     <height>81</height>
     </rect>
    </property>
    <property name="orientation">
     <enum>Qt::Vertical</enum>
    </property>
   </widget>
-  <widget class="Line" name="line_4">
+  <widget class="QGroupBox" name="groupBox">
    <property name="geometry">
     <rect>
-     <x>1100</x>
-     <y>650</y>
-     <width>61</width>
-     <height>151</height>
+     <x>510</x>
+     <y>630</y>
+     <width>861</width>
+     <height>231</height>
     </rect>
    </property>
-   <property name="orientation">
-    <enum>Qt::Vertical</enum>
+   <property name="title">
+    <string>GroupBox</string>
+   </property>
+   <widget class="QPushButton" name="setConfigurationButton">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>200</y>
+      <width>201</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Set Configuration</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>30</y>
+      <width>204</width>
+      <height>155</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="L1">
+     <item>
+      <widget class="QCheckBox" name="L1Enabled">
+       <property name="text">
+        <string>L1 Cache Enabled</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L1AssociativityLayout">
+       <item>
+        <widget class="QLabel" name="L1AssociativityLabel">
+         <property name="text">
+          <string>Assoc.</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="L1Associativity">
+         <item>
+          <property name="text">
+           <string>Direct-Mapped</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>4-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>8-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>16-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>32-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>N-Way</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L1LinesLayout">
+       <item>
+        <widget class="QLabel" name="L1LinesLabel">
+         <property name="text">
+          <string># Lines</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="L1Lines">
+         <property name="text">
+          <string>8</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L1WordsPerLineLayout">
+       <item>
+        <widget class="QLabel" name="L1WordsPerLineLabel">
+         <property name="text">
+          <string>Words/Line</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="L1WordsPerLine">
+         <item>
+          <property name="text">
+           <string>1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>8</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>16</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>32</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string/>
+          </property>
+         </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L1CyclesLayout">
+       <item>
+        <widget class="QLabel" name="L1CyclesLabel">
+         <property name="text">
+          <string># Cycles</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="L1Cycles">
+         <property name="text">
+          <string>1</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QLabel" name="writePolicyLabel">
+    <property name="geometry">
+     <rect>
+      <x>630</x>
+      <y>30</y>
+      <width>121</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Write Policy:</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>30</y>
+      <width>204</width>
+      <height>155</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="L2">
+     <item>
+      <widget class="QCheckBox" name="L2Enabled">
+       <property name="text">
+        <string>L2 Cache Enabled</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L2AssociativityLayout">
+       <item>
+        <widget class="QLabel" name="L2AssociativityLabel">
+         <property name="text">
+          <string>Assoc.</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="L2Associativity">
+         <item>
+          <property name="text">
+           <string>Direct-Mapped</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>4-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>8-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>16-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>32-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>N-Way</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L2LinesLayout">
+       <item>
+        <widget class="QLabel" name="L2LinesLabel">
+         <property name="text">
+          <string># Lines</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="L2Lines">
+         <property name="text">
+          <string>32</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L2WordsPerLineLayout">
+       <item>
+        <widget class="QLabel" name="L2WordsPerLineLabel">
+         <property name="text">
+          <string>Words/Line</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="L2WordsPerLine">
+         <item>
+          <property name="text">
+           <string>1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>8</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>16</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>32</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L2CyclesLayout">
+       <item>
+        <widget class="QLabel" name="L2CyclesLabel">
+         <property name="text">
+          <string># Cycles</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="L2Cycles">
+         <property name="text">
+          <string>1</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+   <widget class="Line" name="line_4">
+    <property name="geometry">
+     <rect>
+      <x>580</x>
+      <y>30</y>
+      <width>61</width>
+      <height>151</height>
+     </rect>
+    </property>
+    <property name="orientation">
+     <enum>Qt::Vertical</enum>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="writePolicyBox">
+    <property name="geometry">
+     <rect>
+      <x>710</x>
+      <y>30</y>
+      <width>131</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>Write-through</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Write-back</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QLabel" name="evictionPolicyLabel">
+    <property name="geometry">
+     <rect>
+      <x>630</x>
+      <y>60</y>
+      <width>121</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Eviction Policy:</string>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="evictionPolicyBox">
+    <property name="geometry">
+     <rect>
+      <x>730</x>
+      <y>60</y>
+      <width>111</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <item>
+     <property name="text">
+      <string>LRU</string>
+     </property>
+    </item>
+    <item>
+     <property name="text">
+      <string>Random</string>
+     </property>
+    </item>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_3">
+    <property name="geometry">
+     <rect>
+      <x>410</x>
+      <y>30</y>
+      <width>204</width>
+      <height>155</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="L3">
+     <item>
+      <widget class="QCheckBox" name="L3Enabled">
+       <property name="text">
+        <string>L3 Cache Enabled</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L3AssociativityLayout">
+       <item>
+        <widget class="QLabel" name="L3AssociativityLabel">
+         <property name="text">
+          <string>Assoc.</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="L3Associativity">
+         <item>
+          <property name="text">
+           <string>Direct-Mapped</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>4-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>8-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>16-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>32-Way</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>N-Way</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L3LinesLayout">
+       <item>
+        <widget class="QLabel" name="L3LinesLabel">
+         <property name="text">
+          <string># Lines</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="L3Lines">
+         <property name="text">
+          <string>128</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L3WordsPerLineLayout">
+       <item>
+        <widget class="QLabel" name="L3WordsPerLineLabel">
+         <property name="text">
+          <string>Words/Line</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="L3WordsPerLine">
+         <item>
+          <property name="text">
+           <string>1</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>2</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>4</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>8</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>16</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>32</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="L3CyclesLayout">
+       <item>
+        <widget class="QLabel" name="L3CyclesLabel">
+         <property name="text">
+          <string># Cycles</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="L3Cycles">
+         <property name="text">
+          <string>3</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QWidget" name="verticalLayoutWidget_4">
+    <property name="geometry">
+     <rect>
+      <x>630</x>
+      <y>100</y>
+      <width>221</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <layout class="QVBoxLayout" name="memory">
+     <item>
+      <layout class="QHBoxLayout" name="memoryLinesLayout">
+       <item>
+        <widget class="QLabel" name="memoryLinesLabel">
+         <property name="text">
+          <string>Memory Address Space: 2^</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="memoryLines">
+         <property name="text">
+          <string>12</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="memoryCyclesLayout">
+       <item>
+        <widget class="QLabel" name="memoryCyclesLabel">
+         <property name="text">
+          <string># Cycles to access Memory</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="memoryCycles">
+         <property name="text">
+          <string>100</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
+   <widget class="QCheckBox" name="pipelineEnabledButton">
+    <property name="geometry">
+     <rect>
+      <x>630</x>
+      <y>170</y>
+      <width>141</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Pipelining Enabled</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QLabel" name="NCyclesLabel">
+   <property name="geometry">
+    <rect>
+     <x>655</x>
+     <y>610</y>
+     <width>16</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>N:</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="stepSize">
+   <property name="geometry">
+    <rect>
+     <x>680</x>
+     <y>610</y>
+     <width>51</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="addBreakpoint">
+   <property name="geometry">
+    <rect>
+     <x>900</x>
+     <y>560</y>
+     <width>61</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="removeBreakpoint">
+   <property name="geometry">
+    <rect>
+     <x>900</x>
+     <y>600</y>
+     <width>61</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="currentCycle">
+   <property name="geometry">
+    <rect>
+     <x>660</x>
+     <y>550</y>
+     <width>71</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="readOnly">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QTextEdit" name="currentBreakpoints">
+   <property name="geometry">
+    <rect>
+     <x>980</x>
+     <y>570</y>
+     <width>131</width>
+     <height>61</height>
+    </rect>
+   </property>
+   <property name="readOnly">
+    <bool>true</bool>
    </property>
   </widget>
  </widget>
