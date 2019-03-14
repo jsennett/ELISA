@@ -19,6 +19,11 @@ class Simulator:
 
     def step(self):
         logging.info("Simulator: step()")
+
         self.cycle += 1
-        # Todo: start the pipeline chain of events
+
+        # TODO: Correctly update PC based on instruction.
+        self.PC += 4
+
+        # TODO: start the pipeline chain of events
         pass

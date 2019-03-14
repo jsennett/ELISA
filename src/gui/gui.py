@@ -70,6 +70,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.simulator = Simulator()
 
         # TODO: Add animation pane, if enough time.
+        # TODO: Add a status box with helpful messages (eg configuration loaded, step executed).
 
         # Update data tables, pulling info from simulator
         self.update_data()
@@ -115,6 +116,16 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # TODO: See if gui.ui is corrected, and if so, remove this.
         self.ui.registerTable.verticalHeader().setVisible(True)
         self.ui.registerTable.horizontalHeader().setVisible(True)
+        self.ui.instructionTable.verticalHeader().setVisible(True)
+        self.ui.instructionTable.horizontalHeader().setVisible(True)
+        self.ui.memoryTable.horizontalHeader().setVisible(True)
+        self.ui.memoryTable.verticalHeader().setVisible(False)
+        self.ui.cacheTable.horizontalHeader().setVisible(True)
+        self.ui.cacheTable.verticalHeader().setVisible(False)
+
+        # Switch to default initial tabs
+        self.ui.tabs.setCurrentIndex(0)
+        self.ui.dataTabs.setCurrentIndex(0)
 
 
     def configure_cache(self):
@@ -212,6 +223,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Last, clear and update the cache and memory tables
         self.update_data()
+        self.ui.status.setText("Memory configured.")
 
 
 
@@ -220,7 +232,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.simulator.step() # update simulator
         self.update_data()    # update UI
-        pass
+        self.ui.status.setText("Step taken.")
 
     def step_n(self):
         # TODO: Implement this method
@@ -235,6 +247,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for _ in range(n):
             self.simulator.step()
         self.update_data()
+        self.ui.status.setText("{} steps taken.".format(n))
 
     def step_breakpoint(self):
         # TODO: Implement this method
@@ -273,6 +286,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Switch to the code editor tab
         self.ui.tabs.setCurrentIndex(0)
+        self.ui.status.setText("Code imported.")
 
     def export_file(self):
         # TODO:
@@ -292,6 +306,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Write the contents of the editor to file
         with open(filename, 'w') as f:
             f.write(self.ui.codeEditor.toPlainText())
+        self.ui.status.setText("Code exported.")
 
     def load(self):
         """Load assembly instructions into the instruction table"""
@@ -314,12 +329,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("Waiting..."))
    
         self.ui.tabs.setCurrentIndex(1)
+        self.ui.status.setText("Instructions loaded.")
 
 
     def reset(self):
-        # TODO: Implement this method
         logging.info("GUI: reset()")
-        pass
+        self.ui.instructionTable.setRowCount(0)
+        self.ui.status.setText("Instructions reset.")
+
 
     def add_breakpoint(self):
         logging.info("GUI: add_breakpoint()")
@@ -334,6 +351,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Update the instruction table with the breakpoint
         self.ui.instructionTable.setItem(n - 1, 3, QtWidgets.QTableWidgetItem("X"))
 
+        # Switch to the instructions table to show the change
+        self.ui.tabs.setCurrentIndex(1)
+        self.ui.status.setText("Breakpont added at instruction #{}".format(n))
+
     def remove_breakpoint(self):
         # TODO: Implement this method
         logging.info("GUI: remove_breakpoint()")
@@ -345,6 +366,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Update the instruction table to remove the breakpoint
         self.ui.instructionTable.setItem(n - 1, 3, QtWidgets.QTableWidgetItem(""))
+
+        # Switch to the instructions table to show the change
+        self.ui.tabs.setCurrentIndex(1)
+        self.ui.status.setText("Breakpont removed at instruction #: {}".format(n))
 
     def update_data(self):
         # TODO: 
@@ -440,10 +465,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # TODO: Set alignment of tables; data should be right justified.
         display_format = self.ui.memoryDisplayBox.currentText()
         if display_format == "Binary":
-            # return format(n, '#0{}b'.format(min_bits))
-            return bin(n)[2:] # cut off binary prefix
+            return bin(n)[2:] 
         elif display_format == "Hexadecimal":
-            # return format(n, '#0{}x'.format(min_bits//4))
             return hex(n)
         else:
             return str(n)
