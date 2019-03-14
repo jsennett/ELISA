@@ -37,10 +37,12 @@ status, etc.) and memory (main and cache) in hexadecimal, loading a program from
 file, and stepping through it to see how the state changes. At this point, you will have all
 of the major components of the simulator working.
 """
+from PyQt5.QtCore import QFileInfo, QSettings, QCoreApplication
 from PyQt5 import QtWidgets, QtGui
 from mainwindow import Ui_mainwindow
 from simulator import Simulator
 from memory import Memory, Cache
+import assembler
 import sys
 
 import logging
@@ -48,8 +50,13 @@ logging.basicConfig(level=logging.INFO)
 
 
 class ApplicationWindow(QtWidgets.QMainWindow):
+
+
     def __init__(self):
         super(ApplicationWindow, self).__init__()
+
+        settings = QSettings("gui.ini", QSettings.IniFormat)
+
 
         # Set up UI
         self.ui = Ui_mainwindow()
@@ -62,13 +69,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Connect a simulator
         self.simulator = Simulator()
 
+        # TODO: Add animation pane, if enough time.
+
+        # Update data tables, pulling info from simulator
+        self.update_data()
+
         # Add button functionality
-        #     DONE:
-        # add breakpoint
-        # remove breakpoint
-        # set configuration
-        # import
-        # export
         # 
         #     IN PROGRESS:
         # step 1 cycle
@@ -86,8 +92,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.importButton.clicked.connect(self.import_file)
         self.ui.exportButton.clicked.connect(self.export_file)
         self.ui.resetButton.clicked.connect(self.reset)
+        self.ui.loadButton.clicked.connect(self.load)
+        self.ui.saveButton.clicked.connect(self.save)
+        self.ui.restoreButton.clicked.connect(self.restore)
         self.ui.addBreakpointButton.clicked.connect(self.add_breakpoint)
         self.ui.removeBreakpointButton.clicked.connect(self.remove_breakpoint)
+        self.ui.memoryDisplayBox.activated.connect(self.update_data)
 
         # Add input validators
         self.ui.L1Lines.setValidator(QtGui.QIntValidator(1, 2**26))
@@ -98,8 +108,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.L3Cycles.setValidator(QtGui.QIntValidator(0, 1000))
         self.ui.memoryCycles.setValidator(QtGui.QIntValidator(0, 1000))
         self.ui.memoryLines.setValidator(QtGui.QIntValidator(1, 32))
-        self.ui.addBreakpoint.setValidator(QtGui.QIntValidator(1, 10000))
-        self.ui.removeBreakpoint.setValidator(QtGui.QIntValidator(1, 10000))
+        self.ui.breakpoint.setValidator(QtGui.QIntValidator(1, 10000))
+
+        # Qt Designer is buggy, and a few settings are not being preserved.
+        # Overwrite these settings to ensure they are carried over.
+        # TODO: See if gui.ui is corrected, and if so, remove this.
+        self.ui.registerTable.verticalHeader().setVisible(True)
+        self.ui.registerTable.horizontalHeader().setVisible(True)
+
 
     def configure_cache(self):
         logging.info("GUI: configure_cache()")
@@ -135,6 +151,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             "pipelineEnabledButton": self.ui.pipelineEnabledButton.isChecked()
         }
         logging.info('GUI: Configuration:\n\t' + '\n\t'.join(["{}-{}".format(k, v) for (k, v) in configuration.items()]))
+
+        # TODO: Implement write and eviction policy settings + pipeline 
+        # enabled, and use these configurations to set the policies.
 
         memory_heirarchy = []
         try:
@@ -191,6 +210,11 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for level in self.simulator.memory_heirarchy:
             logging.info(level)
 
+        # Last, clear and update the cache and memory tables
+        self.update_data()
+
+
+
     def step(self):
         logging.info("GUI: step()")
 
@@ -236,6 +260,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "","All Files (*);;Assembly Files (*.asm)", options=options)
         if filename:
             logging.info("GUI: reading " + filename)
+        else:
+            # If escaped, return without importing.
+            return
 
         # Read the file
         with open(filename) as f:
@@ -243,6 +270,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Copy contents into the code editor
         self.ui.codeEditor.setPlainText(file_contents)
+
+        # Switch to the code editor tab
+        self.ui.tabs.setCurrentIndex(0)
 
     def export_file(self):
         # TODO:
@@ -262,72 +292,217 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Write the contents of the editor to file
         with open(filename, 'w') as f:
             f.write(self.ui.codeEditor.toPlainText())
-    
+
+    def load(self):
+        """Load assembly instructions into the instruction table"""
+        logging.info("GUI: reset()")
+
+        code = self.ui.codeEditor.toPlainText()
+        logging.info("Current editor contents: \n\t {}".format(code))
+
+        # Parse text into assembly instructions
+        text_instructions = assembler.parse_text(code)
+
+        # Convert assembly into machine code
+        numerical_instructions = [assembler.assemble_instruction(line) for line in text_instructions]
+
+        # Update the instructions table
+        self.ui.instructionTable.setRowCount(len(text_instructions))
+        for idx in range(len(text_instructions)):
+            self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(text_instructions[idx]))
+            self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(self.display(numerical_instructions[idx])))
+            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("Waiting..."))
+   
+        self.ui.tabs.setCurrentIndex(1)
+
+
     def reset(self):
         # TODO: Implement this method
         logging.info("GUI: reset()")
         pass
 
     def add_breakpoint(self):
-        # TODO: Implement this method
         logging.info("GUI: add_breakpoint()")
         try:
-            n = int(self.ui.addBreakpoint.text())
+            n = int(self.ui.breakpoint.text())
             if n < 1:
                 raise ValueError("Breakpoint must be at least 1")
         except ValueError as e:
             self.ui.error_dialog.showMessage(str(e))
             return
 
-        # Get the set of current breakpoints
-        current_breakpoints = set(self.ui.currentBreakpoints.toPlainText().split(', '))
-
-        # Add new breakpoint, and discard empty string caused by split()
-        current_breakpoints.add(self.ui.addBreakpoint.text())
-        current_breakpoints.discard('') 
-
-        # current_breakpoints is a sets of strings
-        # sort by integer value, then concatenate results with comma delimeter.
-        # update the field with the new result
-        self.ui.currentBreakpoints.setText(', '.join(list(sorted(current_breakpoints, key=lambda x: int(x)))))
-        logging.info("new breakpoints" + self.ui.currentBreakpoints.toPlainText())
+        # Update the instruction table with the breakpoint
+        self.ui.instructionTable.setItem(n - 1, 3, QtWidgets.QTableWidgetItem("X"))
 
     def remove_breakpoint(self):
         # TODO: Implement this method
         logging.info("GUI: remove_breakpoint()")
         try:
-            n = int(self.ui.removeBreakpoint.text())
+            n = int(self.ui.breakpoint.text())
         except ValueError as e:
             self.ui.error_dialog.showMessage(str(e))
             return
 
-        # Get the set of current breakpoints
-        current_breakpoints = set(self.ui.currentBreakpoints.toPlainText().split(', '))
-
-        # Discard specified breakpoint, and discard empty string caused by split()
-        current_breakpoints.discard(self.ui.removeBreakpoint.text())
-        current_breakpoints.discard('')
-
-        # current_breakpoints is a sets of strings
-        # sort by integer value, then concatenate results with comma delimeter.
-        # update the field with the new result
-        self.ui.currentBreakpoints.setText(', '.join(list(sorted(current_breakpoints, key=lambda x: int(x)))))
-        logging.info("new breakpoints" + self.ui.currentBreakpoints.toPlainText())
+        # Update the instruction table to remove the breakpoint
+        self.ui.instructionTable.setItem(n - 1, 3, QtWidgets.QTableWidgetItem(""))
 
     def update_data(self):
-        # TODO: Implement this method
+        # TODO: 
+        #   currently, we are rewriting the entire memory contents each time we update
+        #   which is once per step-1/step-N. This is currently quite fast (no noticable lag)
+        #   but if it slows down performance, we can change this to update only parts that change.
+        #   For example, one method updates for a new configuration (heavy update)
+        #   and another updates if only a few values change (light update)
         logging.info("GUI: update_data()")
 
-        # Populate memory table from simulator memory
-        # Populate cache table from simulator caches
-        # Populate register table from simulator registers
+        # Update the program counter and cycle count
+        self.ui.currentCycle.setText(str(self.simulator.cycle))
+        self.ui.programCounter.setText(self.display(self.simulator.PC))
 
-        # TODO: remove default values from GUI tables.        
-        pass
+
+        # Determine table dimensions
+        register_rows, register_columns = 32, 2 
+        memory_rows, memory_columns = self.simulator.memory_heirarchy[-1].lines, 2
+        if len(self.simulator.memory_heirarchy) == 1:
+            # If there is no cache, just have a placeholder table.
+            cache_rows, cache_columns = 32, (4 + 1) 
+            self.ui.cacheTable.setHorizontalHeaderLabels(["Level", "Tag", "Index", "Valid", "Word 1"])
+
+        else:
+            # If there is a cache, determine table size from the levels of the simulator's memory heirarchy
+
+            # The rows are the lines in each of the cache levels
+            cache_rows = sum([self.simulator.memory_heirarchy[level].lines
+                for level in range(len(self.simulator.memory_heirarchy) - 1)])
+
+            # The columns are Level, Tag, Index, Valid, and [Words]; so, 4 + words per line)
+            max_num_words_per_line = max([self.simulator.memory_heirarchy[level].words_per_line
+                for level in range(len(self.simulator.memory_heirarchy) - 1)])
+            cache_columns = 4 + max_num_words_per_line
+            self.ui.cacheTable.setHorizontalHeaderLabels(["Level", "Tag", "Index", "Valid"] + ["Word " + str(i + 1) for i in range(max_num_words_per_line)])
+
+        logging.info("register size: " + str((register_rows, register_columns)))
+        logging.info("memory size: " + str((memory_rows, memory_columns)))
+        logging.info("cache size: " + str((cache_rows, cache_columns)))
+
+        # Update table dimensions
+        self.ui.registerTable.setRowCount(register_rows)
+        self.ui.registerTable.setColumnCount(register_columns)
+        self.ui.memoryTable.setRowCount(memory_rows)
+        self.ui.memoryTable.setColumnCount(memory_columns)
+        self.ui.cacheTable.setRowCount(cache_rows)
+        self.ui.cacheTable.setColumnCount(cache_columns)
+
+        # Update table contents
+        # Register table
+        for idx in range(32):
+            # TODO: see if there is a more efficient way than replacing cell by cell
+            # TODO: use display format to adjust string representation. Use instead of str()
+            self.ui.registerTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.R[idx])))
+            self.ui.registerTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.F[idx])))
+
+        # Memory table
+        for idx, value in enumerate(self.simulator.memory_heirarchy[-1].data):
+            self.ui.memoryTable.setItem(idx,0, QtWidgets.QTableWidgetItem(self.display(idx)))
+            self.ui.memoryTable.setItem(idx,1, QtWidgets.QTableWidgetItem(self.display(value)))
+            
+        # Cache table
+        for level in range(len(self.simulator.memory_heirarchy) - 1):
+            for idx, row in enumerate(self.simulator.memory_heirarchy[level].data):
+
+                # Index within the cache table
+                # Since cache levels are squashed into a single table, 
+                # L2 lines should appear after L1.
+                cache_table_idx = self.idx_to_cache_table_idx(idx, level)
+
+                # Level Name, Tag, Index, Valid
+                self.ui.cacheTable.setItem(cache_table_idx, 0, QtWidgets.QTableWidgetItem(self.simulator.memory_heirarchy[level].name))
+                self.ui.cacheTable.setItem(cache_table_idx, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][0])))
+                self.ui.cacheTable.setItem(cache_table_idx, 2, QtWidgets.QTableWidgetItem(self.display(idx)))
+                self.ui.cacheTable.setItem(cache_table_idx, 3, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][-1])))
+
+                for offset in range(self.simulator.memory_heirarchy[level].words_per_line):
+                    self.ui.cacheTable.setItem(cache_table_idx, 4 + offset, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][1 + offset])))
+
+    def idx_to_cache_table_idx(self, idx, level):
+        """Since cache contents are appended to a single cache table, this function
+        converts a cache index for a level into a whole table index."""
+        displacement = 0
+        for prior_level in range(level):
+            displacement += self.simulator.memory_heirarchy[prior_level].lines
+        return idx + displacement
+
+
+    def display(self, n, min_bits=1):
+        """Display an int n according to the set display format"""
+        # TODO: If we want leading zeros, implement the min_bits argument to specify extent of left-padding.
+        # For now, ignore leading zeros; I think this will look better.
+        # TODO: Set alignment of tables; data should be right justified.
+        display_format = self.ui.memoryDisplayBox.currentText()
+        if display_format == "Binary":
+            # return format(n, '#0{}b'.format(min_bits))
+            return bin(n)[2:] # cut off binary prefix
+        elif display_format == "Hexadecimal":
+            # return format(n, '#0{}x'.format(min_bits//4))
+            return hex(n)
+        else:
+            return str(n)
+
+    def save(self):
+        # TODO: Restore is buggy; it does not restore labels and table contents.
+        # We may have to manually iterate over settings to save the right things to the INI.
+        # Get the filename
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog # this prevents OSX warning message
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save File", "","All Files (*);;INI Files (*.ini)", options=options)
+        if filename:
+            logging.info("GUI: saving program to " + filename)
+        else:
+            return
+
+        # Write the contents of the editor to file
+        settings = QSettings(filename, QSettings.IniFormat)
+        
+        for w in QtWidgets.qApp.allWidgets():
+            mo = w.metaObject()
+            if w.objectName() != "":
+                for i in range(mo.propertyCount()):
+                    name = mo.property(i).name()
+                    settings.setValue("{}/{}".format(w.objectName(), name), w.property(name))
+
+    def restore(self):
+        # TODO: Restore is buggy; it does not restore labels and table contents.
+        # We may have to manually iterate over settings to save the right things to the INI.
+        # Get the filename
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog # this prevents OSX warning message
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "","All Files (*);;INI Files (*.ini)", options=options)
+        if filename:
+            logging.info("GUI: restoring program " + filename)
+        else:
+            # If escaped, return without importing.
+            return
+
+        settings = QSettings(filename, QSettings.IniFormat)
+        file_info = QFileInfo(settings.fileName())
+
+        if file_info.exists() and file_info.isFile():
+            for w in QtWidgets.qApp.allWidgets():
+                mo = w.metaObject()
+                if w.objectName() != "":
+                    for i in range(mo.propertyCount()):
+                        name = mo.property(i).name()
+                        val = settings.value("{}/{}".format(w.objectName(), name), w.property(name))
+                        w.setProperty(name, val)
+        else:
+            logging.info("GUI: failed to restore " + filename)
 
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
+    QCoreApplication.setOrganizationName("ELISA")
+    QCoreApplication.setOrganizationDomain("github.com/jsennett/ELISA.git")
+    QCoreApplication.setApplicationName("ELISA")    
     application = ApplicationWindow()
     application.show()
     sys.exit(app.exec_())
