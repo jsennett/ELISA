@@ -115,6 +115,16 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # TODO: See if gui.ui is corrected, and if so, remove this.
         self.ui.registerTable.verticalHeader().setVisible(True)
         self.ui.registerTable.horizontalHeader().setVisible(True)
+        self.ui.instructionTable.verticalHeader().setVisible(True)
+        self.ui.instructionTable.horizontalHeader().setVisible(True)
+        self.ui.memoryTable.horizontalHeader().setVisible(True)
+        self.ui.memoryTable.verticalHeader().setVisible(False)
+        self.ui.cacheTable.horizontalHeader().setVisible(True)
+        self.ui.cacheTable.verticalHeader().setVisible(False)
+
+        # Switch to default initial tabs
+        self.ui.tabs.setCurrentIndex(0)
+        self.ui.dataTabs.setCurrentIndex(0)
 
 
     def configure_cache(self):
@@ -334,6 +344,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Update the instruction table with the breakpoint
         self.ui.instructionTable.setItem(n - 1, 3, QtWidgets.QTableWidgetItem("X"))
 
+        # Switch to the instructions table to show the change
+        self.ui.tabs.setCurrentIndex(1)
+
     def remove_breakpoint(self):
         # TODO: Implement this method
         logging.info("GUI: remove_breakpoint()")
@@ -345,6 +358,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Update the instruction table to remove the breakpoint
         self.ui.instructionTable.setItem(n - 1, 3, QtWidgets.QTableWidgetItem(""))
+
+        # Switch to the instructions table to show the change
+        self.ui.tabs.setCurrentIndex(1)
 
     def update_data(self):
         # TODO: 
@@ -440,10 +456,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # TODO: Set alignment of tables; data should be right justified.
         display_format = self.ui.memoryDisplayBox.currentText()
         if display_format == "Binary":
-            # return format(n, '#0{}b'.format(min_bits))
-            return bin(n)[2:] # cut off binary prefix
+            return bin(n)[2:] 
         elif display_format == "Hexadecimal":
-            # return format(n, '#0{}x'.format(min_bits//4))
             return hex(n)
         else:
             return str(n)
