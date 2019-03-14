@@ -64,7 +64,7 @@ class CodeEditor(QPlainTextEdit):
 		extraSelections = []
 		if not self.isReadOnly():
 			selection = QTextEdit.ExtraSelection()
-			lineColor = QColor(Qt.blue).lighter(160)
+			lineColor = QColor(Qt.yellow).lighter(160)
 			selection.format.setBackground(lineColor)
 			selection.format.setProperty(QTextFormat.FullWidthSelection, True)
 			selection.cursor = self.textCursor()
