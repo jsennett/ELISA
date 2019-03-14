@@ -38,33 +38,30 @@ class Memory:
     
     Attributes:
         address_length (int): bits per address
-        bits_per_offset (int): bits per offset
         current_delay (int): cycles per read or write
         data (list of int): current data contents
         initial_delay (int): cycles remaining until read or write completes
         lines (int): lines of data
         name (str): handle (e.g. DRAM)
         noisy (bool): whether to pause after each cycle
-        words_per_read (int): how many words to return (cache block size)
     """
     
-    def __init__(self, lines, words_per_read=4, delay=10, noisy=False, name="Memory"):
+    def __init__(self, lines, delay=10, noisy=False, name="Memory"):
         """Initialize a Memory object."""
         self.lines = lines
         self.address_length = lines.bit_length() - 1
-        self.words_per_read = words_per_read
-        self.bits_per_offset = words_per_read.bit_length() - 1
         self.data = [0] * lines
         self.initial_delay = delay
         self.current_delay = delay
         self.noisy = noisy
         self.name = name
 
-    def read(self, memory_address):
+    def read(self, memory_address, num_words=1):
         """Get a block of values containing the input memory address
         
         Args:
             memory_address (int): Memory address
+            num_words (int): How many words to return (line size)
         
         Returns:
             list: A block of values including that memory address
@@ -89,8 +86,9 @@ class Memory:
             cache_miss += 1
 
             # Return the entire block
-            start = memory_address >> self.bits_per_offset << self.bits_per_offset
-            return self.data[start: start + self.words_per_read]
+            bits_per_num_words = num_words.bit_length() - 1
+            start = memory_address >> bits_per_num_words << bits_per_num_words
+            return self.data[start: start + num_words]
 
     def write(self, memory_address, value):
         """Write a value to a memory_address
@@ -144,34 +142,32 @@ class Cache:
         lines (int): lines of data
         name (str): handle (e.g. DRAM)
         noisy (bool): whether to pause after each cycle
-        top_level (bool): whether the cache is top level (i.e. called by a user 
-                                                          versus another level of cache)
         valid_bit_index (int): location of valid bit in line
         words_per_line (int): words per line
     """
-    def __init__(self, lines, words_per_line=4, delay=3, associativity=1, next_level=None, top_level=False, noisy=False, name="Cache"):
+    def __init__(self, lines, words_per_line=4, delay=3, associativity=1, next_level=None, noisy=False, name="Cache"):
         """Initialize a Cache object."""
         self.lines = lines
         self.words_per_line = words_per_line
         self.associativity = associativity
-        self.address_length = address_length = next_level.address_length
+        self.address_length = next_level.address_length
         self.bits_per_index = (lines//associativity - 1).bit_length()
         self.bits_per_offset = (words_per_line - 1).bit_length()
-        self.bits_per_tag = address_length - self.bits_per_index - self.bits_per_offset
+        self.bits_per_tag = self.address_length - self.bits_per_index - self.bits_per_offset
         self.next_level = next_level
         self.initial_delay = delay
         self.current_delay = delay
-        self.top_level = top_level
         self.noisy = noisy
         self.name = name
         self.data = [[0] * (words_per_line+2) for line in range(lines)]
         self.valid_bit_index = (words_per_line + 1)
         
-    def read(self, memory_address):
+    def read(self, memory_address, num_words=1):
         """Get a block of values containing the input memory address
         
         Args:
             memory_address (int): Memory address
+            num_words (int): How many words to return (line size)
         
         Returns:
             list: A block of values including that memory address
@@ -218,7 +214,7 @@ class Cache:
             if not tag_in_set or not row_is_valid:
                 response = "wait"
                 while response == "wait":
-                    response = self.next_level.read(memory_address)
+                    response = self.next_level.read(memory_address, num_words=self.words_per_line)
                 
                 # If there is place to replace within the set
                 if invalid_in_set:
@@ -227,20 +223,16 @@ class Cache:
                     row_location = random.randrange(start_index, end_index)
                 
                 # Update the values of the line
-                self.data[row_location][0] = tag                                # Update the tag
-                self.data[row_location][1: self.words_per_line + 1] = response     # Update the cache
-                self.data[row_location][self.valid_bit_index] = 1               # Set the invalid bit to valid
+                self.data[row_location][0] = tag                         # Update the tag
+                self.data[row_location][1: num_words + 1] = response     # Update the cache
+                self.data[row_location][self.valid_bit_index] = 1        # Set the invalid bit to valid
                 
             # Reset the delay
             self.current_delay = self.initial_delay
             
             # If top level cache, return the word in the cache line
-            if self.top_level:
-                return self.data[row_location][offset + 1]
+            return self.data[row_location][1:num_words + 1]
 
-            # Else, return the whole cache line
-            else:
-                return self.data[row_location][1:self.words_per_line+1]
 
     def parse_address(self, memory_address):
         """Parse tag, index, and offset from a memory address"""
@@ -319,7 +311,6 @@ class Cache:
             "next_level: {}".format(self.next_level.name) + '\n\t' + 
             "initial_delay: {}".format(self.initial_delay) + '\n\t' + 
             "current_delay: {}".format(self.current_delay) + '\n\t' + 
-            "top_level: {}".format(self.top_level) + '\n\t' + 
             "noisy: {}".format(self.noisy) + '\n\t' + 
             "valid_bit_index: {}".format(self.valid_bit_index) +
             ">")
@@ -366,7 +357,7 @@ class MemoryDemo:
         start_time = cycle
         if instruction[0] == "load":
             response = self.load(int(instruction[1], 2))
-            print(" ".join(instruction), "- value {:032b} loaded from address {} in {} cycles.".format(response, instruction[1], cycle - start_time))
+            print(" ".join(instruction), "- value {:032b} loaded from address {} in {} cycles.".format(response[0], instruction[1], cycle - start_time))
         elif instruction[0] == "store":
             self.store(int(instruction[1], 2), int(instruction[2], 2))
             print(" ".join(instruction), "- value {} stored to address {} in {} cycles.".format(instruction[2], instruction[1], cycle - start_time))
