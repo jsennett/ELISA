@@ -55,15 +55,16 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(ApplicationWindow, self).__init__()
 
+        # TODO: Fix settings to properly save/restore a program
         settings = QSettings("gui.ini", QSettings.IniFormat)
-
 
         # Set up UI
         self.ui = Ui_mainwindow()
         self.ui.setupUi(self)
+        self.setWindowTitle('ELISA')
 
         # Error dialog box
-        self.ui.error_dialog = QtWidgets.QErrorMessage()
+        self.error_dialog = QtWidgets.QErrorMessage()
         logging.info("GUI: UI is setup.")
 
         # Connect a simulator
@@ -126,6 +127,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Switch to default initial tabs
         self.ui.tabs.setCurrentIndex(0)
         self.ui.dataTabs.setCurrentIndex(0)
+        self.statusBar().showMessage("Welcome!")
 
 
     def configure_cache(self):
@@ -223,7 +225,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Last, clear and update the cache and memory tables
         self.update_data()
-        self.ui.status.setText("Memory configured.")
+        self.statusBar().showMessage("Memory configured.")
 
 
 
@@ -232,7 +234,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.simulator.step() # update simulator
         self.update_data()    # update UI
-        self.ui.status.setText("Step taken.")
+        self.statusBar().showMessage("Step taken.")
 
     def step_n(self):
         # TODO: Implement this method
@@ -247,7 +249,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for _ in range(n):
             self.simulator.step()
         self.update_data()
-        self.ui.status.setText("{} steps taken.".format(n))
+        self.statusBar().showMessage("{} steps taken.".format(n))
 
     def step_breakpoint(self):
         # TODO: Implement this method
@@ -286,7 +288,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Switch to the code editor tab
         self.ui.tabs.setCurrentIndex(0)
-        self.ui.status.setText("Code imported.")
+        self.statusBar().showMessage("Code imported.")
 
     def export_file(self):
         # TODO:
@@ -306,7 +308,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Write the contents of the editor to file
         with open(filename, 'w') as f:
             f.write(self.ui.codeEditor.toPlainText())
-        self.ui.status.setText("Code exported.")
+        self.statusBar().showMessage("Code exported.")
 
     def load(self):
         """Load assembly instructions into the instruction table"""
@@ -329,13 +331,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("Waiting..."))
    
         self.ui.tabs.setCurrentIndex(1)
-        self.ui.status.setText("Instructions loaded.")
+        self.statusBar().showMessage("Instructions loaded.")
 
 
     def reset(self):
         logging.info("GUI: reset()")
         self.ui.instructionTable.setRowCount(0)
-        self.ui.status.setText("Instructions reset.")
+        self.statusBar().showMessage("Instructions reset.")
 
 
     def add_breakpoint(self):
@@ -353,7 +355,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Switch to the instructions table to show the change
         self.ui.tabs.setCurrentIndex(1)
-        self.ui.status.setText("Breakpont added at instruction #{}".format(n))
+        self.statusBar().showMessage("Breakpont added at instruction #{}".format(n))
 
     def remove_breakpoint(self):
         # TODO: Implement this method
@@ -369,7 +371,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Switch to the instructions table to show the change
         self.ui.tabs.setCurrentIndex(1)
-        self.ui.status.setText("Breakpont removed at instruction #: {}".format(n))
+        self.statusBar().showMessage("Breakpont removed at instruction #: {}".format(n))
 
     def update_data(self):
         # TODO: 
@@ -520,12 +522,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         else:
             logging.info("GUI: failed to restore " + filename)
 
-
-def main():
+def main():    
     app = QtWidgets.QApplication(sys.argv)
+
+    app.setWindowIcon(QtGui.QIcon('gui/ELISA.png'))
     QCoreApplication.setOrganizationName("ELISA")
     QCoreApplication.setOrganizationDomain("github.com/jsennett/ELISA.git")
     QCoreApplication.setApplicationName("ELISA")    
+
     application = ApplicationWindow()
     application.show()
     sys.exit(app.exec_())
