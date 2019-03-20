@@ -65,6 +65,7 @@ function_codes = {
 
 
 def assemble_instruction(text_instruction):
+    print('parsing:', text_instruction)
     """Convert a string instruction into a numerical instruction"""
     split_instruction = text_instruction.split()
     numerical_instruction = -1 # error value
@@ -160,6 +161,7 @@ def parse_register_and_shift(operand):
 
     # If no shift is specified
     else:
+        print(operand)
         shift = 0
         reg = int(''.join([x for x in operand if x.isdigit()]))
     return reg, shift
@@ -185,13 +187,23 @@ def parse_immediate(operand):
     """
     # int(X, 0) interprets the integer using hex prefix '0x' 
     # or binary prefix '0b'. Assumes decimal if no prefix.
-    return int(operand.replace('#', ''), 0)
+    return int(operand, 0)
+
+def assemble_to_text(text):
+    """Parse assembly code to generate text instructions"""
+    text = text.replace(',', '').replace('\t', ' ')
+    text = text.replace("\r\n", "\n")
+
+    # For lines 
+    lines_without_comments = [line[:line.find('#')] if line.find('#') >= 0 else line for line in text.split('\n')]
+    non_empty_lines = [line for line in lines_without_comments if line != '']
+    return non_empty_lines
 
 
-def assemble_text(text):
+def assemble_to_numerical(text):
     """Convert a string (such as file contents) into a list of numerical instructions"""
-    text_instructions = parse_text(text)
-    numerical_instructions = [assemble_instruction(line) for line in text_instructions]
+    text_instructions = assemble_to_text(text)
+    numerical_instructions = [assemble_instruction(line) for line in text_instructions if line != '']
     return numerical_instructions
 
 
@@ -201,6 +213,6 @@ def parse_text(text):
     text = text.replace("\r\n", "\n")
 
     # Split lines, ignoring comments and empty lines
-    text_instructions = [line[:line.find('#')] for line in text.split('\n') if line[:line.find('#')] != '']
+    text_instructions = [line for line in text.split('\n') if line != '']
 
     return text_instructions

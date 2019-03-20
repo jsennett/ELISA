@@ -1,7 +1,81 @@
 import sys
 
 sys.path.append("src/")
-from assembler import assemble_instruction
+from assembler import assemble_instruction, assemble_to_numerical, assemble_to_text
+
+def test_integer_file_instruction_parsing():
+
+    with open('test/integer_instructions.asm') as f:
+        file_contents = f.read()
+
+    expected = [
+        "add $r1 $r2 $r3",
+        "addi $r4 $r8 0x123",
+        "sub $r1 $r2 $r3",
+        "sll $r5 $r6 0x12",
+        "srl $r5 $r6 0x12",
+        "mult $r3 $r4",
+        "div $r3 $r4",
+        "and $r1 $r2 $r3",
+        "andi $r1 $r2 0x01",
+        "or $r1 $r2 $r3",
+        "ori $r1 $r2 0x04",
+        "xor $r1 $r2 $r4",
+        "xori $r1 $r2 0x04",
+        "nor $r1 $r2 $r4",
+        "beq $r1 $r2 0x1234",
+        "bne $r1 $r2 0x1234",
+        "bgez $r1 0x1234",
+        "blez $r1 0x1234",
+        "bgtz $r2 0x4567",
+        "bltz $r2 0x4567",
+        "j 0x3456",
+        "jal 0x3456",
+        "jr $r3",
+        "slt $r1 $r2 $r3",
+        "slti $r1 $r2 0x1234",
+        "lw $r1 0x04($r3)",
+        "sw $r1 0x04($r3)"
+    ]
+    assert(assemble_to_text(file_contents) == expected)
+
+
+def test_integer_file_instruction_assembly():
+
+    with open('test/integer_instructions.asm') as f:
+        file_contents = f.read()
+
+    expected = [
+        0b00000000010000110000100000100000,
+        0b00100001000001000000000100100011,
+        0b00000000010000110000100000100010,
+        0b00000000000001100010110010000000,
+        0b00000000000001100010110010000010,
+        0b00000000011001000000000000011000,
+        0b00000000011001000000000000011010,
+        0b00000000010000110000100000100100,
+        0b00110000010000010000000000000001,
+        0b00000000010000110000100000100101,
+        0b00110100010000010000000000000100,
+        0b00000000010001000000100000100110,
+        0b00111000010000010000000000000100,
+        0b00000000010001000000100000100111,
+        0b00010000001000100001001000110100,
+        0b00010100001000100001001000110100,
+        0b00000100001000010001001000110100,
+        0b00011000001000000001001000110100,
+        0b00011100010000000100010101100111,
+        0b00000100010000000100010101100111,
+        0b00001000000000000011010001010110,
+        0b00001100000000000011010001010110,
+        0b00000000011000000000000000001000,
+        0b00000000010000110000100000101010,
+        0b00101000010000010001001000110100,
+        0b10001100011000010000000000000100,
+        0b10101100011000010000000000000100
+    ]
+    assert(assemble_to_numerical(file_contents) == expected)
+
 
 def test_add_instruction():
     assert(assemble_instruction("add $r1 $r2 $r3") == 0b00000000010000110000100000100000)
@@ -83,4 +157,3 @@ def test_lw_instruction():
 
 def test_sw_instruction():
     assert(assemble_instruction("sw $r1 0x04($r3)") == 0b10101100011000010000000000000100)
-
