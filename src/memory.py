@@ -56,6 +56,9 @@ class Memory:
         self.noisy = noisy
         self.name = name
 
+    def reset_data(self):
+        self.data = [0] * self.lines
+
     def read(self, memory_address, num_words=1):
         """Get a block of values containing the input memory address
         
@@ -161,6 +164,9 @@ class Cache:
         self.name = name
         self.data = [[0] * (words_per_line+2) for line in range(lines)]
         self.valid_bit_index = (words_per_line + 1)
+
+    def reset_data(self):
+        self.data = [[0] * (self.words_per_line+2) for line in range(self.lines)]
         
     def read(self, memory_address, num_words=1):
         """Get a block of values containing the input memory address

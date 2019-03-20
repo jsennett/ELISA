@@ -48,12 +48,6 @@ class Simulator:
 
         # Cycle count
         self.cycle = 0
-
-        # Registers
-        self.R = list(range(100, 132)) # TODO: Replace with 0s; for testing, it helps to have initial values.
-        # self.R = [0] * 32
-        self.F = [0] * 32
-        self.PC = 0
         
          # Memory
         DRAM = Memory(lines=2**12, delay=100)
@@ -61,10 +55,18 @@ class Simulator:
         L2 = Cache(lines=32, words_per_line=1, delay=1, associativity=1, next_level=L1, name="L2")
         self.memory_heirarchy = [L1, L2, DRAM]
         
-        # Pipeline Buffers
-        # The pipeline registers exist as buffers between any two stages of the
-        # pipline. At index 0 (left), values are written from the first stage
-        # and at index 1 (right) values are read from the next stage.
+        self.reset_registers()
+        self.reset_memory()
+
+    def reset_registers(self):
+
+        # Registers
+        # self.R = [0] * 32
+        self.R = list(range(100, 132))
+        self.F = [0] * 32
+        self.PC = 0
+
+        # Pipeline Buffers ([write, read] pairs)
         self.IF_ID_PC = [0] * 2
         self.IF_ID_Inst = [0] * 2
         self.ID_EX_PC = [0] * 2
@@ -99,11 +101,17 @@ class Simulator:
         self.MEM_WB_MemToReg = [0] * 2
         self.MEM_WB_RegWrite = [0] * 2
         self.MEM_WB_Stall = [0] * 2
+
+    def reset_memory(self):
+        for level in self.memory_heirarchy:
+            level.reset_data()
+
         
     def IF(self):
         # Get the instruction to be processed and pass it along to ID stage
 
         # If we finish the program:
+        # TODO: Correctly implement when we finish a program.
         instruction_idx = self.IF_ID_PC[0]//4
         if instruction_idx >= len(self.instructions):
             logging.info("Program finished.")
@@ -353,7 +361,15 @@ class Simulator:
 
                     # Calculate the address and change PC and instruction
                     self.IF_ID_PC[0] = (self.IF_ID_PC[0] & 0xF0000000) ^ (self.ID_EX_Target[1]<<2)
-                    self.IF_ID_Inst[0] = instruction_set[self.IF_ID_PC[0]//4]
+
+                    # If we finish the program:
+                    # TODO: Correctly implement when we finish a program.
+                    instruction_idx = self.IF_ID_PC[0]//4
+                    if instruction_idx >= len(self.instructions):
+                        logging.info("Program finished.")
+                        return
+
+                    self.IF_ID_Inst[0] = self.instructions[self.IF_ID_PC[0]//4]
                     self.IF_ID_PC[0] += 4
                     self.PC = self.IF_ID_PC[0]
                     

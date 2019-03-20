@@ -115,6 +115,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Qt Designer is buggy, and a few settings are not being preserved.
         # Overwrite these settings to ensure they are carried over.
         # TODO: See if gui.ui is corrected, and if so, remove this.
+        # TODO: Change register table vertical header to be 0-indexed.
         self.ui.registerTable.verticalHeader().setVisible(True)
         self.ui.registerTable.horizontalHeader().setVisible(True)
         self.ui.instructionTable.verticalHeader().setVisible(True)
@@ -214,7 +215,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     logging.info("GUI: {} cache added.".format(level))
 
         except ValueError as e:
-            self.ui.error_dialog.showMessage(str(e))
+            self.error_dialog.showMessage(str(e))
             return
 
         # Once validated, use configuration to create simulator memory_heirarchy
@@ -228,13 +229,18 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Memory configured.")
 
 
-
     def step(self):
         logging.info("GUI: step()")
 
-        self.simulator.step() # update simulator
-        self.update_data()    # update UI
-        self.statusBar().showMessage("Step taken.")
+        try:
+            self.simulator.step() # update simulator
+            self.update_data()    # update UI
+            self.statusBar().showMessage("Step taken.")
+        except AttributeError as e:
+            msg = str(e) + "... Perhaps you haven't loaded any instructions yet?"
+            self.error_dialog.showMessage(msg)
+            return
+
 
     def step_n(self):
         # TODO: Implement this method
@@ -243,7 +249,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         try:
             n = int(self.ui.stepSize.text())
         except ValueError as e:
-            self.ui.error_dialog.showMessage(str(e))
+            self.error_dialog.showMessage(str(e))
             return
 
         for _ in range(n):
@@ -312,30 +318,42 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def load(self):
         """Load assembly instructions into the instruction table"""
-        logging.info("GUI: reset()")
+        logging.info("GUI: load()")
 
         code = self.ui.codeEditor.toPlainText()
         logging.info("Current editor contents: \n\t {}".format(code))
 
         # Parse text into assembly instructions
-        text_instructions = assembler.parse_text(code)
+        text_instructions = assembler.assemble_to_text(code)
 
         # Convert assembly into machine code
-        numerical_instructions = [assembler.assemble_instruction(line) for line in text_instructions]
+        numerical_instructions = assembler.assemble_to_numerical(code)
+
+        # Load instructions in the simulator
+        self.simulator.load_instructions(numerical_instructions, text_instructions)
 
         # Update the instructions table
         self.ui.instructionTable.setRowCount(len(text_instructions))
         for idx in range(len(text_instructions)):
             self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(text_instructions[idx]))
-            self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(self.display(numerical_instructions[idx])))
+            self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(bin(numerical_instructions[idx])[2:]))
             self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("Waiting..."))
    
         self.ui.tabs.setCurrentIndex(1)
         self.statusBar().showMessage("Instructions loaded.")
 
+        # Update data; since instructions are in memory, we need to update.
+        self.update_data()
+
 
     def reset(self):
         logging.info("GUI: reset()")
+
+        # Reset the simulator
+        self.simulator.reset_memory()
+        self.simulator.reset_registers()
+
+        # Reset the instruction table
         self.ui.instructionTable.setRowCount(0)
         self.statusBar().showMessage("Instructions reset.")
 
@@ -347,7 +365,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             if n < 1:
                 raise ValueError("Breakpoint must be at least 1")
         except ValueError as e:
-            self.ui.error_dialog.showMessage(str(e))
+            self.error_dialog.showMessage(str(e))
             return
 
         # Update the instruction table with the breakpoint
@@ -363,7 +381,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         try:
             n = int(self.ui.breakpoint.text())
         except ValueError as e:
-            self.ui.error_dialog.showMessage(str(e))
+            self.error_dialog.showMessage(str(e))
             return
 
         # Update the instruction table to remove the breakpoint
@@ -389,6 +407,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Determine table dimensions
         register_rows, register_columns = 32, 2 
+
+        # 0-indexed vertical header for registers $R0-$R32, $F0-$F32
+        self.ui.registerTable.setVerticalHeaderLabels([str(n) for n in range(32)])
+
         memory_rows, memory_columns = self.simulator.memory_heirarchy[-1].lines, 2
         if len(self.simulator.memory_heirarchy) == 1:
             # If there is no cache, just have a placeholder table.
@@ -465,6 +487,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # TODO: If we want leading zeros, implement the min_bits argument to specify extent of left-padding.
         # For now, ignore leading zeros; I think this will look better.
         # TODO: Set alignment of tables; data should be right justified.
+        # TODO: Allow for different delays for data tables, program counter
+        # TODO: Fix display of negative numbers; use twos complement or fix cutoff.
         display_format = self.ui.memoryDisplayBox.currentText()
         if display_format == "Binary":
             return bin(n)[2:] 
