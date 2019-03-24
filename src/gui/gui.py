@@ -36,6 +36,16 @@ The user interface at this stage should support viewing the registers (including
 status, etc.) and memory (main and cache) in hexadecimal, loading a program from a
 file, and stepping through it to see how the state changes. At this point, you will have all
 of the major components of the simulator working.
+
+Next steps:
+
+    implement breakpoints
+    implement step until breakpoint
+    implement step until completion
+    correctly export/restore program
+    catch exceptions rather than crashing
+    split display format into two options for data display and address/tag/idx display
+
 """
 from PyQt5.QtCore import QFileInfo, QSettings, QCoreApplication
 from PyQt5 import QtWidgets, QtGui

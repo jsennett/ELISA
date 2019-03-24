@@ -3,9 +3,15 @@
 Created on Thu Mar  7 10:06:58 2019
 
 @author: ayash
+
+Next steps:
+
+    Support pipeline off / on
+    Support correct stalling for multi-cycle ALU operations
+    Write unit tests 
+    Plan Mar27 Demo
 """
 from memory import Memory, Cache
-from pprint import pprint
 import sys
 
 import logging
@@ -517,5 +523,5 @@ class Simulator:
         self.instructions = instructions
         self.memory_heirarchy[-1].data[:len(instructions)] = instructions
 
-    
+
     

@@ -9,6 +9,22 @@ ELISA Assembler
 For useful documentation on MIPS instructions, see: 
     https://www.eg.bucknell.edu/~csci320/mips_web/
     http://www.cs.ucsb.edu/~franklin/64/lectures/mipsassemblytutorial.pdf
+
+Required next steps:
+
+    Assemble floating point instructions
+    Documentation
+
+Possible future steps:
+
+    Support sections (.data / .text)
+    Add in all MIPS instructions
+    Allow labels to refer to variables in .data
+    Code validation, helpful error messsages
+    Validate keywords (eg labels can be instruction names, registers must be 0-31)
+    Change register names to match MIPS naming ($v0, $t0, etc.)
+    support syscall command
+
 """
 
 # Instruction Types
