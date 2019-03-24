@@ -118,7 +118,7 @@ class Simulator:
             return
 
         # Display instruction meaning
-        print("Loading instruction:", self.instruction_meanings[instruction_idx], bin(self.instructions[instruction_idx]))
+        print("Loading instruction:", bin(self.instructions[instruction_idx]))
         
         # If not a stall
         if(self.MEM_WB_Stall[0] == 0):
@@ -512,40 +512,10 @@ class Simulator:
         self.WB()
         self.cycle += 1
 
-    def load_instructions(self, instructions, instruction_meanings):
-        # TODO: Remove redundancy, maybe fetch each instruction from memory
-        # so that it gets cached.
-        # TODO: remove instruction_meanings argument once we have an assembler
-        self.memory_heirarchy[-1].data[:len(instructions)] = instructions
+    def load_instructions(self, instructions):
+        # TODO: Load and cache instructions rather than setting them as an attribute.
         self.instructions = instructions
-        self.instruction_meanings = instruction_meanings
+        self.memory_heirarchy[-1].data[:len(instructions)] = instructions
 
-
-def main():
-    
-    # Get instructions (Not part of memory)
-    instructions_to_meanings = [
-        (0x00831820, "ADD $R3, $R4, $R3"),
-        (0x01263820, "ADD $R7, $R9, $R6"),
-        (0x00000000, "NOP"),
-        (0x01224820, "ADD $R9, $R9, $R2"),
-        (0x00624022, "SUB $R8, $R3, $R2"),
-        (0x00000000, "NOP"),
-        (0x8D48FFFC, "LW $R8, -4($R10)"),
-    ]
-    instructions = [pair[0] for pair in instructions_to_meanings]
-    instruction_meanings = [pair[1] for pair in instructions_to_meanings]
-    
-    # Run instructions
-    simulator = Simulator()
-    simulator.load_instructions(instructions, instruction_meanings)
-
-    # Step until instructions complete
-    for _ in range(20):
-        simulator.step()
-        input()
-    
-if __name__ == '__main__':
-    main()
     
     

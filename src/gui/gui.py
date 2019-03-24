@@ -330,7 +330,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         numerical_instructions = assembler.assemble_to_numerical(code)
 
         # Load instructions in the simulator
-        self.simulator.load_instructions(numerical_instructions, text_instructions)
+        self.simulator.load_instructions(numerical_instructions)
 
         # Update the instructions table
         self.ui.instructionTable.setRowCount(len(text_instructions))
