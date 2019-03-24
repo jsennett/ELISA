@@ -104,6 +104,9 @@ def test_sll_instruction():
 def test_srl_instruction():
     assert(assemble_instruction("srl $r5 $r6 0x12") == 0b00000000000001100010110010000010)
 
+def test_sra_instruction():
+    assert(assemble_instruction("sra $r1 $r2 0x2") == 0b00000000000000100000100010000011)
+
 def test_mult_instruction():
     assert(assemble_instruction("mult $r3 $r4") == 0b00000000011001000000000000011000)
 
@@ -155,6 +158,9 @@ def test_j_instruction():
 def test_jal_instruction():
     assert(assemble_instruction("jal 0x3456") == 0b00001100000000000011010001010110)
 
+def test_jalr_instruction():
+    assert(assemble_instruction("jalr $r2 $r3") == 0b00000000011000000001000000001001)
+
 def test_jr_instruction():
     assert(assemble_instruction("jr $r3") == 0b00000000011000000000000000001000)
 
@@ -165,7 +171,13 @@ def test_slti_instruction():
     assert(assemble_instruction("slti $r1 $r2 0x1234") == 0b00101000010000010001001000110100)
 
 def test_lw_instruction():
-    assert(assemble_instruction("lw $r1 0x04($r3)") == 0b10001100011000010000000000000100)
+    assert(assemble_instruction("lw $r1 4($r3)") == 0b10001100011000010000000000000100)
+
+def test_lb_instruction():
+    assert(assemble_instruction("lb $r1 13($r2)") == 0b10000000010000010000000000001101)
 
 def test_sw_instruction():
-    assert(assemble_instruction("sw $r1 0x04($r3)") == 0b10101100011000010000000000000100)
+    assert(assemble_instruction("sw $r1 4($r3)") == 0b10101100011000010000000000000100)
+
+def test_sb_instruction():
+    assert(assemble_instruction("sb $r1 13($r2)") == 0b10100000010000010000000000001101)
