@@ -36,7 +36,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>2</number>
+    <number>1</number>
    </property>
    <property name="tabsClosable">
     <bool>false</bool>
@@ -128,17 +128,17 @@
      </attribute>
      <column>
       <property name="text">
+       <string>Memory Address</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
        <string>Assembly</string>
       </property>
      </column>
      <column>
       <property name="text">
        <string>Binary</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Pipeline Stage</string>
       </property>
      </column>
      <column>
@@ -902,7 +902,7 @@
        <item>
         <widget class="QComboBox" name="L2WordsPerLine">
          <property name="currentText">
-          <string/>
+          <string>1</string>
          </property>
          <item>
           <property name="text">
@@ -1126,7 +1126,7 @@
        <item>
         <widget class="QComboBox" name="L3WordsPerLine">
          <property name="currentText">
-          <string/>
+          <string>1</string>
          </property>
          <item>
           <property name="text">
@@ -1192,7 +1192,7 @@
      <rect>
       <x>630</x>
       <y>100</y>
-      <width>221</width>
+      <width>231</width>
       <height>61</height>
      </rect>
     </property>

@@ -335,9 +335,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Update the instructions table
         self.ui.instructionTable.setRowCount(len(text_instructions))
         for idx in range(len(text_instructions)):
-            self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(text_instructions[idx]))
-            self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(bin(numerical_instructions[idx])[2:]))
-            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("Waiting..."))
+            self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(hex(4 * idx)))
+            self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(text_instructions[idx]))
+            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem(bin(numerical_instructions[idx])[2:]))
    
         self.ui.tabs.setCurrentIndex(1)
         self.statusBar().showMessage("Instructions loaded.")
@@ -452,7 +452,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Memory table
         for idx, value in enumerate(self.simulator.memory_heirarchy[-1].data):
-            self.ui.memoryTable.setItem(idx,0, QtWidgets.QTableWidgetItem(self.display(idx)))
+            self.ui.memoryTable.setItem(idx,0, QtWidgets.QTableWidgetItem(self.display(4 * idx)))
             self.ui.memoryTable.setItem(idx,1, QtWidgets.QTableWidgetItem(self.display(value)))
             
         # Cache table
