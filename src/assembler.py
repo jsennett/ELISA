@@ -8,6 +8,7 @@ ELISA Assembler
 
 For useful documentation on MIPS instructions, see: 
     https://www.eg.bucknell.edu/~csci320/mips_web/
+    http://www.cs.ucsb.edu/~franklin/64/lectures/mipsassemblytutorial.pdf
 """
 
 # Instruction Types
@@ -143,6 +144,7 @@ def assemble_instruction(text_instruction):
     # If J-Type instruction
     elif mnemonic in j_type:
 
+        # TODO: Support parsing labels
         address = parse_immediate(split_instruction[1])
         numerical_instruction = (opcode << 26) + address
 
@@ -194,25 +196,54 @@ def assemble_to_text(text):
     text = text.replace(',', '').replace('\t', ' ')
     text = text.replace("\r\n", "\n")
 
-    # For lines 
-    lines_without_comments = [line[:line.find('#')] if line.find('#') >= 0 else line for line in text.split('\n')]
-    non_empty_lines = [line for line in lines_without_comments if line != '']
-    return non_empty_lines
+    # Split into lines
+    lines = text.split('\n')
+
+    # Clean up lines
+    lines = [line[:line.find('#')] if line.find('#') >= 0  # Remove comments 
+                    else line for line in lines]
+    lines = [line for line in lines if line != '']         # Remove empty lines
+    lines = [line.strip() for line in lines]               # Strip whitespace
+
+    # First pass: gather labels
+    # 'labels' is a mapping of a label to the idx 
+    # of the instruction idx following the label
+    labels = {}     
+    instruction_idx = 0
+    lines_without_labels = []
+    for line in lines:
+
+        # If label
+        if ":" in line:
+            labels[line[:line.find(":")]] = instruction_idx
+
+        # If instruction
+        else:
+            assert(len(lines_without_labels) == instruction_idx)
+            lines_without_labels.append(line)
+            instruction_idx += 1
+
+    # Second pass: replace labels with memory location and convert to machine code
+    lines_with_memory_locations = []
+    for line in lines_without_labels:
+
+        # TODO: confirm these are the only conditions where we could use a label.
+        if line.startswith('j') or line.startswith('b'):
+            for label in labels:
+                if label in line:
+                    # Replace the label with the memory location (4 * instruction idx)
+                    line = line.replace(label, hex(4 * labels[label]))
+                    break
+
+        lines_with_memory_locations.append(line)
+
+    print(lines_without_labels)
+    return lines_with_memory_locations
 
 
 def assemble_to_numerical(text):
     """Convert a string (such as file contents) into a list of numerical instructions"""
     text_instructions = assemble_to_text(text)
-    numerical_instructions = [assemble_instruction(line) for line in text_instructions if line != '']
+    numerical_instructions = [assemble_instruction(line) for line in text_instructions]
     return numerical_instructions
 
-
-def parse_text(text):
-    # Clean text; the only delimiters should be spaces and newlines.
-    text = text.replace(',', '').replace('\t', ' ')
-    text = text.replace("\r\n", "\n")
-
-    # Split lines, ignoring comments and empty lines
-    text_instructions = [line for line in text.split('\n') if line != '']
-
-    return text_instructions

@@ -76,6 +76,18 @@ def test_integer_file_instruction_assembly():
     ]
     assert(assemble_to_numerical(file_contents) == expected)
 
+def test_instructions_with_labels():
+
+    # This file has labels
+    with open('test/jump_to_label_instructions.asm') as f:
+        file_contents = f.read()
+
+    expected = ["add $r1 $r2 $r3",  # mem: 0x0
+                "j 0x8",            # mem: 0x4
+                "add $r1 $r2 $r3"]  # mem: 0x8
+
+    # Test whether label maps to correct memeory address
+    assert(assemble_to_text(file_contents) == expected)
 
 def test_add_instruction():
     assert(assemble_instruction("add $r1 $r2 $r3") == 0b00000000010000110000100000100000)
