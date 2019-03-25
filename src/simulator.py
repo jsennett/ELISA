@@ -95,6 +95,10 @@ class Simulator:
             return
         
         self.NPC = self.PC + 4
+        
+        # TODO: Check logic
+        self.PC = self.NPC
+        
         self.buffer[0] = instruction
         print("IF: Fetched instruction:", instruction)
 
@@ -104,7 +108,7 @@ class Simulator:
 
         # If noop:
         if current_instruction == 0:
-            self.buffer[1] = 0
+            self.buffer[1] = [0]
             self.IF()
             return
 
@@ -164,7 +168,7 @@ class Simulator:
         current_instruction = self.buffer[1].copy()
 
         # If noop:
-        if len(current_instruction) == 0 and current_instruction[0] == 0:
+        if len(current_instruction) == 1 and current_instruction[0] == 0:
             self.buffer[2] = 0
             self.ID()
             return
@@ -195,32 +199,71 @@ class Simulator:
         # If J-Type
         elif current_instruction[0] in [0x2, 0x3]:
             opcode, target = current_instruction
-
+            
+            # TODO: Confirm PC is correct
             # If JAL
             if opcode == 0x3:
-                self.R[31] = self.PC + 8
-
-            # For both JAL or J
-            execute_results = [opcode, target]
+                execute_results = [opcode, self.PC + 8, target]
+            else:
+            # If J
+                execute_results = [opcode, target]
 
         # If I-Type
         else:
             opcode, s, t, immediate = current_instruction
 
-            # If LW: t = dest register number; s is base; i is "sign extended" offset
-            execute_results = [opcode, t, s + (immediate << 2)]
-
-            # If SW:
-
-            # BEQ or one of the branches
-
+            
+            # If t is a source, use value self.R[t]
+            # This includes: sw, sb, lw, lb
+            if opcode in [0b101011, 0b101000, 0b100011, 0b100000]:
+                execute_results = [opcode, t, s + (immediate << 2)]
+            
+            # BEQ
+            elif opcode == 0b000100:
+                # If branch is taken
+                if s == t:
+                    execute_results = [opcode, self.PC + (immediate << 2)]
+                # If branch is not taken push a noop (nothing occurs during MEM
+                # and WB stage)
+                else:
+                    execute_results = [0x0]
+            
+            # BNEQ 
+            elif opcode == 0b000101:
+                # If branch is taken
+                if s != t:
+                    execute_results = [opcode, self.PC + (immediate << 2)]
+                # If branch is not taken push a noop (nothing occurs during MEM
+                # and WB stage)
+                else:
+                    execute_results = [0x0]
+            
+                
         # TODO: if multiple cycle ALU op, stall for one cycle.
         self.buffer[2] = execute_results
 
+    def MEM(self):
+        # The memory stage accesses the main memory. It first attempts to get
+        # the write or read from cache within 1 clock cycle (changable), 
+        # and if it cannot, a stall is incurred
+        current_instruction = self.buffer[2].copy()
 
+        # If noop:
+        if len(current_instruction) == 1 and current_instruction[0] == 0:
+            self.buffer[2] = 0
+            self.EX()
+            return
+        
+        # If I-Type
+        if not(current_instruction[0] in [0, 0x2, 0x3]):
+        # If the instruction is a read from memory to store in register               
+        
+        # If the instruction is a write to memory address
 
-
-
+        # If instruction is a branch that is taken, set the correct the PC  
+        # in the buffer and flush the IF ID and EX stages with noops
+        
+        # else push noop
         
     # # def EX(self):
     #     # The execute stage calculates relevant values using the ALU. It either
