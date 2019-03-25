@@ -12,6 +12,7 @@ For useful documentation on MIPS instructions, see:
 
 Required next steps:
 
+    Support negative immediates and offsets: this should convert to appropriate size two's complement (16 bits for immediates)
     Assemble floating point instructions
     Documentation
 
