@@ -36,7 +36,7 @@
     </rect>
    </property>
    <property name="currentIndex">
-    <number>1</number>
+    <number>2</number>
    </property>
    <property name="tabsClosable">
     <bool>false</bool>
@@ -150,17 +150,45 @@
    </widget>
    <widget class="QWidget" name="animationTab">
     <attribute name="title">
-     <string>Animation</string>
+     <string>Pipeline</string>
     </attribute>
-    <widget class="QGraphicsView" name="animationView">
+    <widget class="QTableWidget" name="pipelineTable">
      <property name="geometry">
       <rect>
        <x>0</x>
        <y>0</y>
        <width>811</width>
-       <height>371</height>
+       <height>401</height>
       </rect>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>16</pointsize>
+      </font>
+     </property>
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <attribute name="horizontalHeaderCascadingSectionResizes">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="horizontalHeaderDefaultSectionSize">
+      <number>400</number>
+     </attribute>
+     <attribute name="horizontalHeaderStretchLastSection">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderCascadingSectionResizes">
+      <bool>true</bool>
+     </attribute>
+     <attribute name="verticalHeaderDefaultSectionSize">
+      <number>30</number>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Value</string>
+      </property>
+     </column>
     </widget>
    </widget>
   </widget>
@@ -616,7 +644,7 @@
     <bool>true</bool>
    </property>
    <property name="title">
-    <string>GroupBox</string>
+    <string> </string>
    </property>
    <widget class="QPushButton" name="setConfigurationButton">
     <property name="geometry">

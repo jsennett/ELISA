@@ -87,15 +87,16 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.update_data()
 
         # Add button functionality
-        # 
-        #     IN PROGRESS:
-        # step 1 cycle
-        # step n cycles
+        #     TODO:
         # step until breakpoint
         # step until completion        
-        # 
-        #     TODO:
         # reset
+        # Eviction Policy
+        # Write-back/write-through box      
+        # reset
+        # breakpointss
+        # save/restore program
+
         self.ui.setConfigurationButton.clicked.connect(self.configure_cache)
         self.ui.stepButton.clicked.connect(self.step)
         self.ui.stepNCyclesButton.clicked.connect(self.step_n)
@@ -178,7 +179,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # TODO: Implement write and eviction policy settings + pipeline 
         # enabled, and use these configurations to set the policies.
-
+        # With a new configuration of the cache, the simulator is reset.
+        self.simulator = Simulator()
         memory_heirarchy = []
         try:
 
@@ -234,8 +236,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for level in self.simulator.memory_heirarchy:
             logging.info(level)
 
-        # Last, clear and update the cache and memory tables
+        # Last, clear and update the cache and memory tables, and load instructions (if any)
         self.update_data()
+        self.load()
         self.statusBar().showMessage("Memory configured.")
 
 
@@ -340,14 +343,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         numerical_instructions = assembler.assemble_to_numerical(code)
 
         # Load instructions in the simulator
-        self.simulator.load_instructions(numerical_instructions)
+        self.simulator.set_instructions(numerical_instructions)
 
         # Update the instructions table
         self.ui.instructionTable.setRowCount(len(text_instructions))
         for idx in range(len(text_instructions)):
             self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(hex(4 * idx)))
             self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(text_instructions[idx]))
-            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem(bin(numerical_instructions[idx])[2:]))
+            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("{:032b}".format(numerical_instructions[idx])[2:]))
    
         self.ui.tabs.setCurrentIndex(1)
         self.statusBar().showMessage("Instructions loaded.")
@@ -462,7 +465,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Memory table
         for idx, value in enumerate(self.simulator.memory_heirarchy[-1].data):
-            self.ui.memoryTable.setItem(idx,0, QtWidgets.QTableWidgetItem(self.display(4 * idx)))
+            self.ui.memoryTable.setItem(idx,0, QtWidgets.QTableWidgetItem(hex(4 * idx)))
             self.ui.memoryTable.setItem(idx,1, QtWidgets.QTableWidgetItem(self.display(value)))
             
         # Cache table
@@ -476,12 +479,34 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
                 # Level Name, Tag, Index, Valid
                 self.ui.cacheTable.setItem(cache_table_idx, 0, QtWidgets.QTableWidgetItem(self.simulator.memory_heirarchy[level].name))
-                self.ui.cacheTable.setItem(cache_table_idx, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][0])))
-                self.ui.cacheTable.setItem(cache_table_idx, 2, QtWidgets.QTableWidgetItem(self.display(idx)))
-                self.ui.cacheTable.setItem(cache_table_idx, 3, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][-1])))
+                self.ui.cacheTable.setItem(cache_table_idx, 1, QtWidgets.QTableWidgetItem(bin(self.simulator.memory_heirarchy[level].data[idx][0])[2:]))
+                self.ui.cacheTable.setItem(cache_table_idx, 2, QtWidgets.QTableWidgetItem(bin(idx)[2:]))
+                self.ui.cacheTable.setItem(cache_table_idx, 3, QtWidgets.QTableWidgetItem(bin(self.simulator.memory_heirarchy[level].data[idx][-1])[2:]))
 
                 for offset in range(self.simulator.memory_heirarchy[level].words_per_line):
                     self.ui.cacheTable.setItem(cache_table_idx, 4 + offset, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][1 + offset])))
+
+        # Pipeline table: 4 buffer rows, Cycle, PC, and # memory levels 
+        pipeline_rows = 4 + 2 + len(self.simulator.memory_heirarchy)
+        self.ui.pipelineTable.setRowCount(pipeline_rows)
+        
+        # Buffer rows
+        for idx in range(4):
+            self.ui.pipelineTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(str(self.simulator.buffer[idx])))
+
+        # Cycle, PC
+        self.ui.pipelineTable.setItem(4, 0, QtWidgets.QTableWidgetItem(str(self.simulator.cycle)))
+        self.ui.pipelineTable.setItem(5, 0, QtWidgets.QTableWidgetItem(str(self.simulator.PC)))
+        
+        # Memory and Cache levels
+        for idx, level in enumerate(self.simulator.memory_heirarchy):
+            self.ui.pipelineTable.setItem(idx + 6, 0, QtWidgets.QTableWidgetItem(str(level)))
+
+        # Set pipline table row labels
+        pipelineHeaders = (['IF -> ID', 'ID -> EX', 'EX -> MEM', 'MEM-> WB', 'Cycle', 'PC'] + 
+                                   [level.name for level in self.simulator.memory_heirarchy])
+        self.ui.pipelineTable.setVerticalHeaderLabels(pipelineHeaders)
+
 
     def idx_to_cache_table_idx(self, idx, level):
         """Since cache contents are appended to a single cache table, this function
@@ -501,7 +526,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # TODO: Fix display of negative numbers; use twos complement or fix cutoff.
         display_format = self.ui.memoryDisplayBox.currentText()
         if display_format == "Binary":
-            return bin(n)[2:] 
+            if n >= 0:
+                return bin(n)[2:] 
+            else:
+                return '-' + bin(n)[3:]
         elif display_format == "Hexadecimal":
             return hex(n)
         else:
