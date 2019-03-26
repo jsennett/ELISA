@@ -8,7 +8,7 @@ CS 535
 - add documentation + docstrings
 - test memory hit/miss rate for different cache/associativity configurations
 """
-from memory import MemoryDemo, reset_metrics
+from memory import MemoryDemo
 import config
 import sys
 import os

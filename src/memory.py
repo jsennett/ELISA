@@ -20,17 +20,8 @@ associativity, cache size, and words per line. - Done, I think.
 """
 import sys
 import random
-
-cycle = 1
-cache_miss = 0
-total_loads = 0
-
-
-def reset_metrics():
-    """Reset metrics used for tracking cache performance.
-    """
-    global cycle, cache_miss, total_loads
-    cycle, cache_miss, total_loads = 1, 0, 0
+import logging
+# logging.basicConfig(level=logging.INFO)
 
 
 class Memory:
@@ -59,39 +50,35 @@ class Memory:
     def reset_data(self):
         self.data = [0] * self.lines
 
-    def read(self, memory_address, num_words=1):
+    def read(self, memory_address, words_requested=1):
         """Get a block of values containing the input memory address
         
         Args:
             memory_address (int): Memory address
-            num_words (int): How many words to return (line size)
+            words_requested (int): How many words to return (line size)
         
         Returns:
             list: A block of values including that memory address
                 or
             str: a message to wait
         """
-        global cycle, cache_miss
-
-        # Cycle delay
-        if self.noisy:
-            input("cycle: {}".format(cycle))
-        cycle += 1
-        self.current_delay -= 1
-
+        # logging.info('read()')
         # If delay remains
         if self.current_delay > 0:
+            self.current_delay -= 1
             return "wait"
 
         # If delay is finished
         else:
             self.current_delay = self.initial_delay # reset delay
-            cache_miss += 1
 
             # Return the entire block
-            bits_per_num_words = num_words.bit_length() - 1
-            start = memory_address >> bits_per_num_words << bits_per_num_words
-            return self.data[start: start + num_words]
+            bits_per_words_requested = words_requested.bit_length() - 1
+
+            # TODO: memory_address actually refers to line number; divide start//4 to actually uses memory_address
+            # This will require changing all points that use self.data[memory_address] -> self.data[memory_address//4]
+            start = memory_address >> bits_per_words_requested << bits_per_words_requested
+            return self.data[start: start + words_requested]
 
     def write(self, memory_address, value):
         """Write a value to a memory_address
@@ -105,16 +92,9 @@ class Memory:
                 or
             NoneType: None, if the write is successful.
         """
-        global cycle
-
-        # Cycle delay
-        if self.noisy:
-            input("cycle: {}".format(cycle))
-        cycle += 1
-        self.current_delay -= 1
-
         # If delay remains
         if self.current_delay > 0:
+            self.current_delay -= 1
             return "wait"
 
         # If delay is finished
@@ -126,6 +106,15 @@ class Memory:
         """Display memory contents in a console"""
         for idx, line in enumerate(self.data):
             print('({:0{x}b})  |  {:032b}'.format(idx, line, x=self.address_length))
+
+    def __str__(self):
+        return ("<Memory name: {}: ".format(self.name) + 
+            "lines: {}".format(self.lines) + '; ' + 
+            "address_length: {}".format(self.address_length) + '; ' + 
+            "initial_delay: {}".format(self.initial_delay) + '; ' + 
+            "current_delay: {}".format(self.current_delay) + '; ' + 
+            "noisy: {}".format(self.noisy) + '; ' + 
+            ">")
 
 
 class Cache:
@@ -147,6 +136,8 @@ class Cache:
         noisy (bool): whether to pause after each cycle
         valid_bit_index (int): location of valid bit in line
         words_per_line (int): words per line
+
+    # TODO: Enforce that all levels of cache have the same number of words per line
     """
     def __init__(self, lines, words_per_line=4, delay=3, associativity=1, next_level=None, noisy=False, name="Cache"):
         """Initialize a Cache object."""
@@ -168,28 +159,24 @@ class Cache:
     def reset_data(self):
         self.data = [[0] * (self.words_per_line+2) for line in range(self.lines)]
         
-    def read(self, memory_address, num_words=1):
+    def read(self, memory_address, words_requested=1):
         """Get a block of values containing the input memory address
         
         Args:
             memory_address (int): Memory address
-            num_words (int): How many words to return (line size)
+            words_requested (int): How many words to return (line size)
         
         Returns:
             list: A block of values including that memory address
                 or
             str: a message to wait
-        """
-        global cycle
 
-        # Cycle delay
-        if self.noisy:
-            input("cycle: {}".format(cycle))
-        cycle += 1
-        self.current_delay -= 1
-        
+        # TODO: change words_requested to be either single word or full block; 
+        # and not flexible number of words
+        """
         # If delay remains
         if self.current_delay > 0:
+            self.current_delay -= 1
             return "wait"
 
         # If delay finished
@@ -218,26 +205,33 @@ class Cache:
                 
             # Cache miss - the tag is not in the set, or the tag is in set but invalid            
             if not tag_in_set or not row_is_valid:
-                response = "wait"
-                while response == "wait":
-                    response = self.next_level.read(memory_address, num_words=self.words_per_line)
-                
-                # If there is place to replace within the set
-                if invalid_in_set:
-                    row_location = first_invalid_row
+
+                # Ask lower level and return their response
+                response = self.next_level.read(memory_address, words_requested=self.words_per_line)
+                if response == "wait":
+                    return "wait"
+                # If the lower level response with a value, save in cache before returning to caller
                 else:
-                    row_location = random.randrange(start_index, end_index)
+                    # Determine location where to save the value
+                    if invalid_in_set:
+                        row_location = first_invalid_row
+                    else:
+                        # Random replacement
+                        row_location = random.randrange(start_index, end_index)
                 
                 # Update the values of the line
                 self.data[row_location][0] = tag                         # Update the tag
-                self.data[row_location][1: num_words + 1] = response     # Update the cache
+                self.data[row_location][1: self.words_per_line + 1] = response     # Update the cache
                 self.data[row_location][self.valid_bit_index] = 1        # Set the invalid bit to valid
                 
             # Reset the delay
             self.current_delay = self.initial_delay
             
             # If top level cache, return the word in the cache line
-            return self.data[row_location][1:num_words + 1]
+            if words_requested == 1:
+                return self.data[row_location][1 + offset: 2 + offset]
+            else:
+                return self.data[row_location][1: 1 + self.words_per_line]
 
 
     def parse_address(self, memory_address):
@@ -260,8 +254,6 @@ class Cache:
                 or
             NoneType: None, if the write is successful.
         """
-        global cycle
-
         # Calculate fields needed to handle the write
         tag, index, offset = self.parse_address(memory_address)
         start_index = index*self.associativity
@@ -279,11 +271,8 @@ class Cache:
             
         # If cache hit, update cache first
         if tag_in_set:
-            if self.noisy:
-                input("cycle: {}".format(cycle))
-            cycle += 1
-            self.current_delay -= 1
             if self.current_delay > 0:
+                self.current_delay -= 1
                 return "wait"
             else:
                 self.data[row_location][offset + 1] = value                     # Update the cache
@@ -306,107 +295,17 @@ class Cache:
             print(formatted_line)
 
     def __str__(self):
-        return ("<Cache name {}: ".format(self.name) + 
-            "lines: {}".format(self.lines) + '\n\t' + 
-            "words_per_line: {}".format(self.words_per_line) + '\n\t' + 
-            "associativity: {}".format(self.associativity) + '\n\t' + 
-            "address_length: {}".format(self.address_length) + '\n\t' + 
-            "bits_per_index: {}".format(self.bits_per_index) + '\n\t' + 
-            "bits_per_offset: {}".format(self.bits_per_offset) + '\n\t' + 
-            "bits_per_tag: {}".format(self.bits_per_tag) + '\n\t' + 
-            "next_level: {}".format(self.next_level.name) + '\n\t' + 
-            "initial_delay: {}".format(self.initial_delay) + '\n\t' + 
-            "current_delay: {}".format(self.current_delay) + '\n\t' + 
-            "noisy: {}".format(self.noisy) + '\n\t' + 
+        return ("<Cache name: {}: ".format(self.name) + 
+            "lines: {}".format(self.lines) + '; ' + 
+            "words_per_line: {}".format(self.words_per_line) + '; ' + 
+            "associativity: {}".format(self.associativity) + '; ' + 
+            "address_length: {}".format(self.address_length) + '; ' + 
+            "bits_per_index: {}".format(self.bits_per_index) + '; ' + 
+            "bits_per_offset: {}".format(self.bits_per_offset) + '; ' + 
+            "bits_per_tag: {}".format(self.bits_per_tag) + '; ' + 
+            "next_level: {}".format(self.next_level.name) + '; ' + 
+            "initial_delay: {}".format(self.initial_delay) + '; ' + 
+            "current_delay: {}".format(self.current_delay) + '; ' + 
+            "noisy: {}".format(self.noisy) + '; ' + 
             "valid_bit_index: {}".format(self.valid_bit_index) +
             ">")
-
-
-class MemoryDemo:
-    """Instance of a memory demo.
-    
-    Attributes:
-        memory_heirarchy (TYPE): An ordered 
-    """
-    
-    def __init__(self, memory_heirarchy):
-        assert(type(memory_heirarchy) == list and len(memory_heirarchy) > 0)
-        self.memory_heirarchy = memory_heirarchy
-
-    def execute_instructions(self, filename):
-        # If an assembly file is specified, get instructions from file
-        if filename is not None:
-            instructions = self.parse_asm(filename)
-            for instruction in instructions:
-                self.execute(instruction)
-                input("    [Press Enter to move to the next instruction]")
-
-        # If no aseembly file is specified, get instructions from user
-        else:
-
-            # Display initial instructions
-            self.help()
-
-            # Loop, requesting for user input
-            while True:
-                instruction = input(">>> ").split()
-                self.execute(instruction)
-
-    def execute(self, instruction):
-        global cycle, cache_miss, total_loads
-        
-        # Ignore empty instructions
-        if len(instruction) == 0:
-            return
-
-        # Execute instruction
-        start_time = cycle
-        if instruction[0] == "load":
-            response = self.load(int(instruction[1], 2))
-            print(" ".join(instruction), "- value {:032b} loaded from address {} in {} cycles.".format(response[0], instruction[1], cycle - start_time))
-        elif instruction[0] == "store":
-            self.store(int(instruction[1], 2), int(instruction[2], 2))
-            print(" ".join(instruction), "- value {} stored to address {} in {} cycles.".format(instruction[2], instruction[1], cycle - start_time))
-        elif instruction[0] == "show":
-            for level in self.memory_heirarchy:
-                if level.name == instruction[1]:
-                    level.print_data()
-        elif instruction[0] == "quit":
-            sys.exit(0)
-        elif instruction[0] == "describe":
-            for level in self.memory_heirarchy:
-                if level.name == instruction[1]:
-                    print(level)
-
-        # If the command is not recognized, send help
-        else:
-            self.help()
-
-    def load(self, memory_address):
-        response = "wait"
-        while response == "wait":
-            response = self.memory_heirarchy[0].read(memory_address)
-        return response
-
-    def store(self, memory_address, value):
-        response = "wait"
-        while response == "wait":
-            response = self.memory_heirarchy[0].write(memory_address, value)
-
-    def parse_asm(self, filename):
-        with open(filename) as f:
-            instructions = [line.split() for line in f.read().split('\n') if line != '']
-        return instructions
-
-    def help(self):
-        print("******** How to specify instructions: ********")
-        print("    load  <ADDRESS>                |    load a value from memory")
-        print("    store <ADDRESS> <VALUE>        |    store value in memory")
-        print("    show  <CACHE_NAME>             |    show contents of memory or cache named <CACHE_NAME>")
-        print("    help                           |    show help messages")
-        print("    quit                           |    quit")
-        print("")
-        print("Memory and caches are named:")
-        for level in self.memory_heirarchy:
-            print('    ', level.name)
-        print("")
