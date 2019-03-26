@@ -15,8 +15,7 @@ from memory import Memory, Cache
 import sys
 
 import logging
-logging.basicConfig(level=logging.INFO)
-
+# logging.basicConfig(level=logging.INFO)
 
 
 class Simulator:
@@ -51,23 +50,25 @@ class Simulator:
     """
     
     def __init__(self):
+        # logging.info("__init__()")
 
         # Cycle count
         self.cycle = 0
         
          # Memory
         DRAM = Memory(lines=2**12, delay=100)
-        L1 = Cache(lines=8, words_per_line=1, delay=1, associativity=1, next_level=DRAM, name="L1")
-        L2 = Cache(lines=32, words_per_line=1, delay=2, associativity=1, next_level=L1, name="L2")
+        L2 = Cache(lines=32, words_per_line=1, delay=2, associativity=1, next_level=DRAM, name="L2")
+        L1 = Cache(lines=8, words_per_line=1, delay=1, associativity=1, next_level=L2, name="L1")
         self.memory_heirarchy = [L1, L2, DRAM]
         
         self.reset_registers()
         self.reset_memory()
 
     def reset_registers(self):
+        # logging.info("reset_registers()")
 
         # Registers
-        self.R = list(range(100, 132))  # Todo: replcae with self.R = [0] * 32
+        self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
         self.F = [0] * 32
 
         # TODO: Set PC to where the first instruction is.
@@ -77,30 +78,51 @@ class Simulator:
         self.buffer = [0, 0, 0, 0]
 
     def reset_memory(self):
+        # logging.info("reset_memory()")
         for level in self.memory_heirarchy:
             level.reset_data()
 
     def step(self):
+        # logging.info("step()")
         self.WB()
         self.cycle += 1
         
     def IF(self):
+        # print("IF()")
         # Get the instruction to be processed and pass it along to ID stage
         # TODO: Correctly implement when we finish a program.
 
         # Get instruction from memory
-        instruction = self.memory_heirarchy[0].read(self.PC)
+        instruction = self.memory_heirarchy[0].read(self.PC//4) # TODO: read from address rather than line number
+
+        # If stalled on instruction fetch from memory
         if instruction == "wait":
             # Insert noop
             self.buffer[0] = 0
+            print(self.cycle, "Did not find instruction in L1:", instruction[0], "current buffer:", self.buffer)
             return
 
-        # TODO: Check logic
-        self.PC += 4        
-        
-        self.buffer[0] = [instruction, self.PC]
+        # If noop
+        elif instruction[0] == 0:
+            self.buffer[0] = 0
+            print(self.cycle, "Fetched a a noop:", instruction[0], "current buffer:", self.buffer)
+            return
+
+        # If a real instruction
+        else:
+
+            # Increment the program counter
+            # TOOD: Should we use PC and NPC variables? Check the logic here.
+            self.PC += 4
+            
+            self.buffer[0] = [instruction[0], self.PC]
+            print(self.cycle, "Fetched instruction:", instruction[0], "current buffer:", self.buffer)
+            return
 
     def ID(self):
+        # print("ID()")
+        # TODO: Add destination registers to a destination table
+        # and stall if a following instruction uses a source register in the destination table
 
         # If noop:
         if self.buffer[0] == 0:
@@ -108,9 +130,8 @@ class Simulator:
             self.IF()
             return
 
+        # Decode operation
         current_instruction, PC = self.buffer[0]
-
-
         decode_results = []
         opcode = current_instruction >> 26
 
@@ -170,6 +191,7 @@ class Simulator:
         self.IF()
 
     def EX(self):
+        # logging.info("EX()")
 
         # If noop:
         if self.buffer[1] == 0:
@@ -184,11 +206,11 @@ class Simulator:
             opcode, s, t, d, shift, funct, PC = current_instruction
 
             # If Add
-            if opcode == 0x20:
+            if funct == 0x20:
                 execute_results = [opcode, funct, d, s+t]
 
             # If Sub
-            elif opcode == 0x22:
+            elif funct == 0x22:
                 execute_results = [opcode, funct, d, s-t]
 
             # TODO: Implement remaining r-type instructions
@@ -255,8 +277,10 @@ class Simulator:
                 raise ValueError
 
         self.buffer[2] = execute_results
+        self.ID()
 
     def MEM(self):
+        # logging.info("MEM()")
         # The memory stage accesses the main memory. It first attempts to get
         # the write or read from cache within 1 clock cycle (changable), 
         # and if it cannot, a stall is incurred
@@ -277,9 +301,9 @@ class Simulator:
             if opcode == 0b101011:
 
                 # Write to memory
-                response = self.memory_heirarchy[0].write(memory_address=s, value=t)
+                response = self.memory_heirarchy[0].write(memory_address=s//4, value=t)
                 if response == "wait":
-                    # insert noop
+                    # insert noop, don't call EX() since MEM is stalled
                     self.buffer[3] = 0
                     return
                 else:
@@ -291,14 +315,14 @@ class Simulator:
             elif opcode == 0b100011:
 
                 # Write to memory
-                response = self.memory_heirarchy[0].read(memory_address=s)
+                response = self.memory_heirarchy[0].read(memory_address=s//4)
                 if response == "wait":
-                    # insert noop
+                    # insert noop, don't call EX() since MEM is stalled
                     self.buffer[3] = 0
                     return
                 else:
                     # pass results to WB
-                    self.buffer[3] = [t, response]
+                    self.buffer[3] = [t, response[0]]
                     self.EX()
                     return
 
@@ -313,6 +337,7 @@ class Simulator:
             # Flush the pipeline when the branch is taken
             self.buffer = [0, 0, 0, 0]
             self.PC = t
+            self.EX()
             return
 
         # If jal
@@ -321,6 +346,7 @@ class Simulator:
 
             # JAL stores $r31 = return address (PC + 4)
             self.buffer[3] = [31, return_address]
+            self.EX()
             return
         
         # TODO: Other instructions need to be caught; 
@@ -328,9 +354,11 @@ class Simulator:
         else:
             opcode, funct, reg, value = current_instruction
             self.buffer[3] = [reg, value]
+            self.EX()
             return
 
     def WB(self):
+        # logging.info("WB()")
         
         if self.buffer[3] != 0:
             reg, value = self.buffer[3].copy()
@@ -339,6 +367,7 @@ class Simulator:
         self.MEM()
 
     def set_instructions(self, instructions):
+        # logging.info("set_instructions()")
         """Set instructions in memory.
         
         Args:
