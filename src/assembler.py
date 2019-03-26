@@ -258,13 +258,20 @@ def assemble_to_text(text):
 
     # Second pass: replace labels with memory location
     lines_with_memory_locations = []
-    for line in lines_without_labels:
+    for i, line in enumerate(lines_without_labels):
 
         # TODO: confirm these are the only conditions where we could use a label.
-        if line.startswith('j') or line.startswith('b'):
+        # TODO: Correctly calculate branch and jump 
+        if line.startswith('j'):
             for label in labels:
                 if label in line:
-                    line = line.replace(label, hex(4 * labels[label]))
+                    line = line.replace(label, str(labels[label]))
+                    break
+        # If branch
+        elif line.startswith('b'):
+            for label in labels:
+                if label in line:
+                    line = line.replace(label, str(labels[label] - i))
                     break
 
         lines_with_memory_locations.append(line)
