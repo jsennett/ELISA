@@ -83,7 +83,7 @@ def test_instructions_with_labels():
         file_contents = f.read()
 
     expected = ["add $r1 $r2 $r3",  # mem: 0x0
-                "j 0x8",            # mem: 0x4
+                "j 2",            # mem: 0x4
                 "add $r1 $r2 $r3"]  # mem: 0x8
 
     # Test whether label maps to correct memeory address
