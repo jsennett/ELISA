@@ -58,7 +58,7 @@ class Simulator:
          # Memory
         DRAM = Memory(lines=2**12, delay=100)
         L1 = Cache(lines=8, words_per_line=1, delay=1, associativity=1, next_level=DRAM, name="L1")
-        L2 = Cache(lines=32, words_per_line=1, delay=1, associativity=1, next_level=L1, name="L2")
+        L2 = Cache(lines=32, words_per_line=1, delay=2, associativity=1, next_level=L1, name="L2")
         self.memory_heirarchy = [L1, L2, DRAM]
         
         self.reset_registers()
@@ -82,6 +82,7 @@ class Simulator:
 
     def step(self):
         self.WB()
+        self.cycle += 1
         
     def IF(self):
         # Get the instruction to be processed and pass it along to ID stage
@@ -91,26 +92,24 @@ class Simulator:
         instruction = self.memory_heirarchy[0].read(self.PC)
         if instruction == "wait":
             # Insert noop
-            self.buffer[0] = 0x0
+            self.buffer[0] = 0
             return
-        
-        self.NPC = self.PC + 4
-        
+
         # TODO: Check logic
-        self.PC = self.NPC
+        self.PC += 4        
         
-        self.buffer[0] = instruction
-        print("IF: Fetched instruction:", instruction)
+        self.buffer[0] = [instruction, self.PC]
 
     def ID(self):
 
-        current_instruction = self.buffer[0]
-
         # If noop:
-        if current_instruction == 0:
-            self.buffer[1] = [0]
+        if self.buffer[0] == 0:
+            self.buffer[1] = 0
             self.IF()
             return
+
+        current_instruction, PC = self.buffer[0]
+
 
         decode_results = []
         opcode = current_instruction >> 26
@@ -125,12 +124,12 @@ class Simulator:
             funct = (current_instruction & 0x3F)
 
             # TODO: use self.F instead of self.R for floating point operations
-            decode_results = [opcode, self.R[s], self.R[t], d, shift, funct]
+            decode_results = [opcode, self.R[s], self.R[t], d, shift, funct, PC]
 
         # If j-type: [opcode, target]
         elif opcode in [2, 3]:
             target = current_instruction & 0x03FFFFFF
-            decode_results = [opcode, target]
+            decode_results = [opcode, target, PC]
             # TODO: Think whether we should be updating the PC here for a jump operation
 
         # If i-type: [opcode, s, t, immediate]
@@ -147,43 +146,56 @@ class Simulator:
             # This includes: beq, bne, sw, sb
             # TODO: As we add more instructions, we need to expand these lists.
             if opcode in [0b000100, 0b000101, 0b101011, 0b101000]:
-                decode_results = [opcode, self.R[s], self.R[t], immediate]
+                decode_results = [opcode, self.R[s], self.R[t], immediate, PC]
   
             # If t is a destination, use value t
             # This includes: addi, andi, ori, xori, bgez, blez, bgtz, bltz, slti, lw, lb, 
             # TODO: As we add more instructions, we need to expand these lists.
             else:
-                decode_results = [opcode, self.R[s], t, immediate]
+                decode_results = [opcode, self.R[s], t, immediate, PC]
 
+        # Update the buffer
         self.buffer[1] = decode_results
 
-        # if jump: 
+        # if j or jal
         if opcode in [0x2, 0x3]:
-            self.buffer[0] = 0x0
-        # if not jump, call fetch, which will update buffer[0]:
-        else:
-            self.IF()
+            
+            # Insert a noop in the previous buffer
+            self.buffer[0] = 0
+
+            # Change the PC based on the jump address
+            self.PC = (PC & 0xF0000000) | (target << 2)
+
+        # Either way, call the IF stage.
+        self.IF()
 
     def EX(self):
-        current_instruction = self.buffer[1].copy()
 
         # If noop:
-        if len(current_instruction) == 1 and current_instruction[0] == 0:
+        if self.buffer[1] == 0:
             self.buffer[2] = 0
             self.ID()
             return
 
+        current_instruction = self.buffer[1].copy()
+
         # If R-Type
         if current_instruction[0] == 0:
-            opcode, s, t, d, shift, funct = current_instruction
+            opcode, s, t, d, shift, funct, PC = current_instruction
 
             # If Add
             if opcode == 0x20:
                 execute_results = [opcode, funct, d, s+t]
+
             # If Sub
             elif opcode == 0x22:
                 execute_results = [opcode, funct, d, s-t]
 
+            # TODO: Implement remaining r-type instructions
+            else:
+                raise ValueError
+
+            # TODO: if multiple cycle ALU op, stall for one cycle.
             # If multi-cycle ALU op, add attributes for:
             # self.EX_midway_through_a_multicycle_operation
             # self.EX_cycles_remaining
@@ -198,21 +210,21 @@ class Simulator:
 
         # If J-Type
         elif current_instruction[0] in [0x2, 0x3]:
-            opcode, target = current_instruction
+            opcode, target, PC = current_instruction
             
             # TODO: Confirm PC is correct
             # If JAL
             if opcode == 0x3:
-                execute_results = [opcode, self.PC + 8, target]
-            else:
+                execute_results = [opcode, target, PC + 4]
+
             # If J
+            else:
                 execute_results = [opcode, target]
 
         # If I-Type
         else:
-            opcode, s, t, immediate = current_instruction
+            opcode, s, t, immediate, PC = current_instruction
 
-            
             # If t is a source, use value self.R[t]
             # This includes: sw, sb, lw, lb
             if opcode in [0b101011, 0b101000, 0b100011, 0b100000]:
@@ -222,296 +234,116 @@ class Simulator:
             elif opcode == 0b000100:
                 # If branch is taken
                 if s == t:
-                    execute_results = [opcode, self.PC + (immediate << 2)]
+                    execute_results = [opcode, PC + (immediate << 2)]
                 # If branch is not taken push a noop (nothing occurs during MEM
                 # and WB stage)
                 else:
-                    execute_results = [0x0]
+                    execute_results = 0x0
             
             # BNEQ 
             elif opcode == 0b000101:
                 # If branch is taken
                 if s != t:
-                    execute_results = [opcode, self.PC + (immediate << 2)]
+                    execute_results = [opcode, PC + (immediate << 2)]
                 # If branch is not taken push a noop (nothing occurs during MEM
                 # and WB stage)
                 else:
-                    execute_results = [0x0]
-            
-                
-        # TODO: if multiple cycle ALU op, stall for one cycle.
+                    execute_results = 0x0
+
+            # TODO: Implement remaining r-type instructions
+            else:
+                raise ValueError
+
         self.buffer[2] = execute_results
 
     def MEM(self):
         # The memory stage accesses the main memory. It first attempts to get
         # the write or read from cache within 1 clock cycle (changable), 
         # and if it cannot, a stall is incurred
-        current_instruction = self.buffer[2].copy()
 
         # If noop:
-        if len(current_instruction) == 1 and current_instruction[0] == 0:
-            self.buffer[2] = 0
+        if self.buffer[2] == 0:
+            self.buffer[3] = 0
             self.EX()
             return
-        
-        # If I-Type
-        if not(current_instruction[0] in [0, 0x2, 0x3]):
-        # If the instruction is a read from memory to store in register               
-        
-        # If the instruction is a write to memory address
 
-        # If instruction is a branch that is taken, set the correct the PC  
-        # in the buffer and flush the IF ID and EX stages with noops
-        
-        # else push noop
-        
-    # # def EX(self):
-    #     # The execute stage calculates relevant values using the ALU. It either
-    #     # calculates the operation or an address for loading, storing, or 
-    #     # jumping
-        
-    #     # Pass along values
-    #     self.EX_MEM_Opcode[0] = self.ID_EX_Opcode[1]
-        
-    #     # R-format
-    #     # If ADD
-    #     if (self.ID_EX_Function[1] == 0x20):
-    #         logging.info("[3] \t EX: ADD")
-    #         self.EX_MEM_Zero[0] = 0xf
-    #         self.EX_MEM_ALUResult[0] = self.ID_EX_ReadReg1Value[1] + self.ID_EX_ReadReg2Value[1]
-    #         self.EX_MEM_SWValue[0] = self.ID_EX_ReadReg2Value[1]
-    #         self.EX_MEM_WriteRegNum[0] = self.ID_EX_WriteReg_15_11[1]
+        current_instruction = self.buffer[2].copy()
 
-    #         self.EX_MEM_MemRead[0] = 0
-    #         self.EX_MEM_MemWrite[0] = 0
-    #         self.EX_MEM_MemToReg[0] = 0
-    #         self.EX_MEM_RegWrite[0] = 1
-            
-    #     # If SUB
-    #     elif (self.ID_EX_Function[1] == 0x22):
-    #         logging.info("[3] \t EX: SUB")
-    #         self.EX_MEM_Zero[0] = 0xf
-    #         self.EX_MEM_ALUResult[0] = self.ID_EX_ReadReg1Value[1] - (self.ID_EX_ReadReg2Value[1])
-    #         self.EX_MEM_SWValue[0] = self.ID_EX_ReadReg2Value[1]
-    #         self.EX_MEM_WriteRegNum[0] = self.ID_EX_WriteReg_15_11[1]
+        # If lw, lb, sw, sb
+        if current_instruction[0] in [0b101011, 0b101000, 0b100011, 0b100000]:
+            opcode, t, s = current_instruction
 
-    #         self.EX_MEM_MemRead[0] = 0
-    #         self.EX_MEM_MemWrite[0] = 0
-    #         self.EX_MEM_MemToReg[0] = 0
-    #         self.EX_MEM_RegWrite[0] = 1
-            
-    #     # I format
-    #     else:
-    #         # If LB
-    #         if(self.ID_EX_Opcode[1] == 0x20 and self.ID_EX_MemWrite[1] == 0 and self.ID_EX_MemToReg[1] == 1):
-    #             logging.info("[3] \t EX: LB")
-    #             self.EX_MEM_Zero[0] = 0xf
-    #             self.EX_MEM_ALUResult[0] = self.ID_EX_ReadReg1Value[1] + (self.ID_EX_SEOffset[1]<<2)
-    #             self.EX_MEM_SWValue[0] = self.ID_EX_ReadReg2Value[1]
-    #             self.EX_MEM_WriteRegNum[0] = self.ID_EX_WriteReg_20_16[1]
-    
-    #             self.EX_MEM_MemRead[0] = 1
-    #             self.EX_MEM_MemWrite[0] = 0
-    #             self.EX_MEM_MemToReg[0] = 1
-    #             self.EX_MEM_RegWrite[0] = 1
-            
-    #         # If SB
-    #         elif (self.ID_EX_Opcode[1] == 0x28 and self.ID_EX_MemWrite[1] == 1):
-    #             logging.info("[3] \t EX: SB")
-    #             self.EX_MEM_Zero[0] = 0xf;
-    #             self.EX_MEM_ALUResult[0] = self.ID_EX_ReadReg1Value[1] + (self.ID_EX_SEOffset[1]<<2)
-    #             self.EX_MEM_SWValue[0] = self.ID_EX_ReadReg2Value[1]
-    #             self.EX_MEM_WriteRegNum[0] = 0
-    
-    #             self.EX_MEM_MemRead[0] = 0
-    #             self.EX_MEM_MemWrite[0] = 1
-    #             self.EX_MEM_MemToReg[0] = 0
-    #             self.EX_MEM_RegWrite[0] = 0
-            
-    #         # If LW
-    #         elif(self.ID_EX_Opcode[1] == 0x23 and self.ID_EX_MemWrite[1] == 0 and self.ID_EX_MemToReg[1] == 1):
-    #             logging.info("[3] \t EX: LW")
-    #             self.EX_MEM_Zero[0] = 0xf
-    #             self.EX_MEM_ALUResult[0] = self.ID_EX_ReadReg1Value[1] + (self.ID_EX_SEOffset[1]<<2)
-    #             self.EX_MEM_SWValue[0] = self.ID_EX_ReadReg2Value[1]
-    #             self.EX_MEM_WriteRegNum[0] = self.ID_EX_WriteReg_20_16[1]
-    
-    #             self.EX_MEM_MemRead[0] = 1
-    #             self.EX_MEM_MemWrite[0] = 0
-    #             self.EX_MEM_MemToReg[0] = 1
-    #             self.EX_MEM_RegWrite[0] = 1
-            
-    #         # If SW
-    #         elif (self.ID_EX_Opcode[1] == 0x2B and self.ID_EX_MemWrite[1] == 1):
-    #             logging.info("[3] \t EX: SW")
-    #             self.EX_MEM_Zero[0] = 0xf;
-    #             self.EX_MEM_ALUResult[0] = self.ID_EX_ReadReg1Value[1] + (self.ID_EX_SEOffset[1]<<2)
-    #             self.EX_MEM_SWValue[0] = self.ID_EX_ReadReg2Value[1]
-    #             self.EX_MEM_WriteRegNum[0] = 0
-    
-    #             self.EX_MEM_MemRead[0] = 0
-    #             self.EX_MEM_MemWrite[0] = 1
-    #             self.EX_MEM_MemToReg[0] = 0
-    #             self.EX_MEM_RegWrite[0] = 0
-                
-    #         else:
-    #             # If J or JAL
-    #             if (self.ID_EX_Opcode[1] == 0x02 or self.ID_EX_Opcode[1] == 0x03):
-    #                 logging.info("[3] \t EX: J or JAL")
+            # If sw ("sw $rt offset(base)")
+            if opcode == 0b101011:
 
-    #                 # Calculate the address and change PC and instruction
-    #                 self.IF_ID_PC[0] = (self.IF_ID_PC[0] & 0xF0000000) ^ (self.ID_EX_Target[1]<<2)
+                # Write to memory
+                response = self.memory_heirarchy[0].write(memory_address=s, value=t)
+                if response == "wait":
+                    # insert noop
+                    self.buffer[3] = 0
+                    return
+                else:
+                    self.buffer[3] = 0
+                    self.EX()
+                    return
 
-    #                 # If we finish the program:
-    #                 # TODO: Correctly implement when we finish a program.
-    #                 instruction_idx = self.IF_ID_PC[0]//4
-    #                 if instruction_idx >= len(self.instructions):
-    #                     logging.info("Program finished.")
-    #                     return
+            # If lw ("lw $rt offset(base)")
+            elif opcode == 0b100011:
 
-    #                 self.IF_ID_Inst[0] = self.instructions[self.IF_ID_PC[0]//4]
-    #                 self.IF_ID_PC[0] += 4
-    #                 self.PC = self.IF_ID_PC[0]
-                    
-    #                 # Todo: More work needed for Jump and link (JAL): set return register to the link address
-                    
-    #             # If NOP
-    #             else:
-    #                 logging.info("[3] \t EX: NOP")
-    #                 self.EX_MEM_MemRead[0] = 0
-    #                 self.EX_MEM_MemWrite[0] = 0
-    #                 self.EX_MEM_MemToReg[0] = 0
-    #                 self.EX_MEM_RegWrite[0] = 0
-                    
-    #                 self.EX_MEM_Zero[0] = 0
-    #                 self.EX_MEM_ALUResult[0] = 0
-    #                 self.EX_MEM_SWValue[0] = 0
-    #                 self.EX_MEM_WriteRegNum[0] = 0
-            
-            
-    # def MEM(self):
-    #     # The Ememory stage accesses the main memory. It first attempts to get
-    #     # the write or read from cache within 1 clock cycle (changable), 
-    #     # and if it cannot, a stall is incurred
+                # Write to memory
+                response = self.memory_heirarchy[0].read(memory_address=s)
+                if response == "wait":
+                    # insert noop
+                    self.buffer[3] = 0
+                    return
+                else:
+                    # pass results to WB
+                    self.buffer[3] = [t, response]
+                    self.EX()
+                    return
+
+            elif opcode in [0b101000, 0b100000]:
+                # TODO: Code lb, wb
+                raise ValueError
+
+        # If bne, beq (condition known to be taken; otherwise, replaced by noop)
+        elif current_instruction[0] in [0b000101, 0b000100]:
+            opcode, t = current_instruction
+
+            # Flush the pipeline when the branch is taken
+            self.buffer = [0, 0, 0, 0]
+            self.PC = t
+            return
+
+        # If jal
+        elif current_instruction[0] == 0b000011:
+            opcode, target, return_address = current_instruction
+
+            # JAL stores $r31 = return address (PC + 4)
+            self.buffer[3] = [31, return_address]
+            return
         
-    #     # Transfer control bits from the execute stage into the memory stage.
-    #     self.MEM_WB_ALUResult[0] = self.EX_MEM_ALUResult[1]
-    #     self.MEM_WB_WriteRegNum[0] = self.EX_MEM_WriteRegNum[1]
-    #     self.MEM_WB_MemToReg[0] = self.EX_MEM_MemToReg[1]
-    #     self.MEM_WB_RegWrite[0] = self.EX_MEM_RegWrite[1]
-        
-    #     # If the instruction is a read or write from memory
-    #     if(self.EX_MEM_MemRead[1] == 1 or self.EX_MEM_MemWrite[1] == 1):
-            
-    #         # If load (if you are reading from memory and if you are writing to register)
-    #         if (self.EX_MEM_MemRead[1] == 1 and self.EX_MEM_RegWrite[1] == 1):
-                
-    #             # If LW
-    #             if(self.EX_MEM_Opcode[1] == 0x23):
-    #                 logging.info("[4] \tMEM: LW")
+        # TODO: Other instructions need to be caught; 
+        # this else shouldn't capture all other instruction types.
+        else:
+            opcode, funct, reg, value = current_instruction
+            self.buffer[3] = [reg, value]
+            return
 
-    #                 # stall in case cache miss
-    #                 response = self.memory_heirarchy[0].read((self.EX_MEM_ALUResult[1]))
-    #                 if response == "wait":
-    #                     self.MEM_WB_Stall[0] = 1
-    #                 else:
-    #                     self.MEM_WB_LWDataValue[0] = response[0]
-    #                     self.MEM_WB_Stall[0] = 0
-                    
-    #         # If store (if you are writing to memory and you are not writing to register)
-    #         elif(self.EX_MEM_MemWrite[1] == 1 and self.EX_MEM_RegWrite[1] == 0):
-    #             # Stores are handled here
-    #             self.MEM_WB_LWDataValue[0] = 0
-                
-    #             if (self.EX_MEM_Opcode[1] == 0x2B):
-    #                 logging.info("[4] \tMEM: SW")
-    #                 # stall in case cache miss
-    #                 response = self.memory_heirarchy[0].write(self.EX_MEM_ALUResult[1], self.EX_MEM_SWValue[1])
-    #                 if response == "wait":
-    #                     self.MEM_WB_Stall[0] = 1
-    #                 else:
-    #                     self.MEM_WB_Stall[0] = 0
+    def WB(self):
+        
+        if self.buffer[3] != 0:
+            reg, value = self.buffer[3].copy()
+            self.R[reg] = value
 
-    #     # If instruction doesn't read or write from memory
-    #     else:
-    #         logging.info("[4] \tMEM: no memory access")
-    #         pass
-        
-        
-    # def WB(self):
-    #     # During the Write Back stage, values are written back into registers 
-    #     # if there are values to be written. For instructions such as stores  
-    #     # and jumps, nothing is processed
-        
-    #     # If writing back to registers from ALU calculation
-    #     if(self.MEM_WB_RegWrite[1] == 1 and self.MEM_WB_MemToReg[1] == 0):
-    #         logging.info("[5] \t WB: write back from ALU")
-    #         self.R[self.MEM_WB_WriteRegNum[1]] = self.MEM_WB_ALUResult[1]
+        self.MEM()
 
-    #     # If writing back to registers from memory
-    #     elif(self.MEM_WB_RegWrite[1] == 1 and self.MEM_WB_MemToReg[1] == 1):
-    #         logging.info("[5] \t WB: write back from memory")
-    #         self.R[self.MEM_WB_WriteRegNum[1]] = self.MEM_WB_LWDataValue[1]
-
-    #     else:
-    #         logging.info("[5] \t WB: no write back")
-    #         # no registers are written to in case of a noop or a stores
-    #         pass
-            
-    # def copy_write_to_read(self):
-    #     # During every step of the pipeline move values from write to read 
-    #     # given that stall has not occured (managed in the IF stage)
+    def set_instructions(self, instructions):
+        """Set instructions in memory.
         
-    #     self.IF_ID_PC[1] = self.IF_ID_PC[0]
-    #     self.IF_ID_Inst[1] = self.IF_ID_Inst[0]
+        Args:
+            instructions (list of int): List of machine code instructions.
 
-    #     self.ID_EX_PC[1] = self.ID_EX_PC[0]
-    #     self.ID_EX_ReadReg1Value[1] = self.ID_EX_ReadReg1Value[0]
-    #     self.ID_EX_ReadReg2Value[1] = self.ID_EX_ReadReg2Value[0]
-    #     self.ID_EX_SEOffset[1] = self.ID_EX_SEOffset[0]
-    #     self.ID_EX_WriteReg_20_16[1] = self.ID_EX_WriteReg_20_16[0]
-    #     self.ID_EX_WriteReg_15_11[1] = self.ID_EX_WriteReg_15_11[0]
-    #     self.ID_EX_Opcode[1] = self.ID_EX_Opcode[0]
-    #     self.ID_EX_Function[1] = self.ID_EX_Function[0]
-    #     self.ID_EX_RegDst[1] = self.ID_EX_RegDst[0]
-    #     self.ID_EX_ALUSrc[1] = self.ID_EX_ALUSrc[0]
-    #     self.ID_EX_ALUOp1[1] = self.ID_EX_ALUOp1[0]
-    #     self.ID_EX_ALUOp2[1] = self.ID_EX_ALUOp2[0]
-    #     self.ID_EX_MemRead[1] = self.ID_EX_MemRead[0]
-    #     self.ID_EX_MemWrite[1] = self.ID_EX_MemWrite[0]
-    #     self.ID_EX_MemToReg[1] = self.ID_EX_MemToReg[0]
-    #     self.ID_EX_RegWrite[1] = self.ID_EX_RegWrite[0]
-    #     self.ID_EX_Target[1] = self.ID_EX_Target[0]
-        
-    #     self.EX_MEM_Zero[1] = self.EX_MEM_Zero[0]
-    #     self.EX_MEM_ALUResult[1] = self.EX_MEM_ALUResult[0]
-    #     self.EX_MEM_SWValue[1] = self.EX_MEM_SWValue[0]
-    #     self.EX_MEM_WriteRegNum[1] = self.EX_MEM_WriteRegNum[0]
-    #     self.EX_MEM_MemRead[1] = self.EX_MEM_MemRead[0]
-    #     self.EX_MEM_MemWrite[1] = self.EX_MEM_MemWrite[0]
-    #     self.EX_MEM_MemToReg[1] = self.EX_MEM_MemToReg[0]
-    #     self.EX_MEM_RegWrite[1] = self.EX_MEM_RegWrite[0]
-    #     self.EX_MEM_Opcode[1] = self.EX_MEM_Opcode[0]
-        
-    #     self.MEM_WB_LWDataValue[1] = self.MEM_WB_LWDataValue[0]
-    #     self.MEM_WB_ALUResult[1] = self.MEM_WB_ALUResult[0]
-    #     self.MEM_WB_WriteRegNum[1] = self.MEM_WB_WriteRegNum[0]
-    #     self.MEM_WB_MemToReg[1] = self.MEM_WB_MemToReg[0]
-    #     self.MEM_WB_RegWrite[1] = self.MEM_WB_RegWrite[0]
-    #     self.MEM_WB_Stall[1] = self.MEM_WB_Stall[0]
-        
-        
-    # def step(self):
-    #     # step through the 5 stages of the pipeline
-    #     # TODO: Should step just call WB, and WB call MEM, MEM call EX, etc?
-    #     # Otherwise, if MEM is stalled, EX will still occur.
-    #     self.WB()
-    #     self.cycle += 1
-
-    # def load_instructions(self, instructions):
-    #     # TODO: Load and cache instructions rather than setting them as an attribute.
-    #     self.instructions = instructions
-    #     self.memory_heirarchy[-1].data[:len(instructions)] = instructions
-
-
-    
+        # TODO: allow setting at any point in memory, not just starting at 0x0
+        """
+        self.memory_heirarchy[-1].data[:len(instructions)] = instructions
