@@ -56,7 +56,7 @@ import assembler
 import sys
 
 import logging
-logging.basicConfig(level=logging.INFO)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 class ApplicationWindow(QtWidgets.QMainWindow):
@@ -135,6 +135,11 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.memoryTable.verticalHeader().setVisible(False)
         self.ui.cacheTable.horizontalHeader().setVisible(True)
         self.ui.cacheTable.verticalHeader().setVisible(False)
+
+        # Set lines per 
+        self.ui.L1WordsPerLine.setCurrentIndex(2)
+        self.ui.L2WordsPerLine.setCurrentIndex(2)
+        self.ui.L3WordsPerLine.setCurrentIndex(2)
 
         # Switch to default initial tabs
         self.ui.tabs.setCurrentIndex(0)
@@ -486,24 +491,31 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 for offset in range(self.simulator.memory_heirarchy[level].words_per_line):
                     self.ui.cacheTable.setItem(cache_table_idx, 4 + offset, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][1 + offset])))
 
-        # Pipeline table: 4 buffer rows, Cycle, PC, and # memory levels 
-        pipeline_rows = 4 + 2 + len(self.simulator.memory_heirarchy)
+        # Pipeline table: 4 buffer rows, Cycle, PC, status, dependencies and # memory levels 
+        pipeline_rows = 4 + 5 + len(self.simulator.memory_heirarchy)
         self.ui.pipelineTable.setRowCount(pipeline_rows)
-        
+
+        # Status Row
+        self.ui.pipelineTable.setItem(0, 0, QtWidgets.QTableWidgetItem(str(self.simulator.status)))
+
+        # Dependencies
+        self.ui.pipelineTable.setItem(1, 0, QtWidgets.QTableWidgetItem(str(['$r'+str(n) for n in self.simulator.register_dependency])))
+        self.ui.pipelineTable.setItem(2, 0, QtWidgets.QTableWidgetItem("[]")) # TODO: Fill in with F dependencies
+
         # Buffer rows
         for idx in range(4):
-            self.ui.pipelineTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(str(self.simulator.buffer[idx])))
+            self.ui.pipelineTable.setItem(idx + 3, 0, QtWidgets.QTableWidgetItem(str(self.simulator.buffer[idx])))
 
         # Cycle, PC
-        self.ui.pipelineTable.setItem(4, 0, QtWidgets.QTableWidgetItem(str(self.simulator.cycle)))
-        self.ui.pipelineTable.setItem(5, 0, QtWidgets.QTableWidgetItem(str(self.simulator.PC)))
+        self.ui.pipelineTable.setItem(7, 0, QtWidgets.QTableWidgetItem(str(self.simulator.cycle)))
+        self.ui.pipelineTable.setItem(8, 0, QtWidgets.QTableWidgetItem(str(self.simulator.PC)))
         
         # Memory and Cache levels
         for idx, level in enumerate(self.simulator.memory_heirarchy):
-            self.ui.pipelineTable.setItem(idx + 6, 0, QtWidgets.QTableWidgetItem(str(level)))
+            self.ui.pipelineTable.setItem(idx + 9, 0, QtWidgets.QTableWidgetItem(str(level)))
 
         # Set pipline table row labels
-        pipelineHeaders = (['IF -> ID', 'ID -> EX', 'EX -> MEM', 'MEM-> WB', 'Cycle', 'PC'] + 
+        pipelineHeaders = (['Status', '$R Dependencies', '$F Dependencies', 'IF -> ID', 'ID -> EX', 'EX -> MEM', 'MEM-> WB', 'Cycle', 'PC'] + 
                                    [level.name for level in self.simulator.memory_heirarchy])
         self.ui.pipelineTable.setVerticalHeaderLabels(pipelineHeaders)
 
