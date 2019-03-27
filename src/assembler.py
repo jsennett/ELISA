@@ -114,7 +114,7 @@ def assemble_instruction(text_instruction):
             s = 0
             t = parse_register(split_instruction[2])
             d = parse_register(split_instruction[1])
-            shift = parse_immediate(split_instruction[3])
+            shift = parse_immediate(split_instruction[3], 5)
             funct = function_codes.get(mnemonic, 0)
             
         # Special format for jalr: 
@@ -148,7 +148,7 @@ def assemble_instruction(text_instruction):
         # Special format for certain branch instructions
         if mnemonic in ['bgez', 'blez', 'bgtz', 'bltz']:
             s = parse_register(split_instruction[1])
-            i = parse_immediate(split_instruction[2])
+            i = parse_immediate(split_instruction[2], 16)
             if mnemonic == 'bgez':
                 t = 1
             else:
@@ -163,13 +163,13 @@ def assemble_instruction(text_instruction):
         elif mnemonic in ['bne', 'beq']:
             s = parse_register(split_instruction[1])
             t = parse_register(split_instruction[2])
-            i = parse_immediate(split_instruction[3])
+            i = parse_immediate(split_instruction[3], 16)
 
         # All others follow the same format
         else:
             t = parse_register(split_instruction[1])
             s = parse_register(split_instruction[2])
-            i = parse_immediate(split_instruction[3])
+            i = parse_immediate(split_instruction[3], 16)
 
         numerical_instruction = (opcode << 26) + (s << 21) + (t << 16) + (i)
 
@@ -177,7 +177,7 @@ def assemble_instruction(text_instruction):
     elif mnemonic in j_type:
 
         # TODO: Support parsing labels
-        address = parse_immediate(split_instruction[1])
+        address = parse_immediate(split_instruction[1], 26)
         numerical_instruction = (opcode << 26) + address
 
     return numerical_instruction
@@ -215,14 +215,17 @@ def parse_register(operand):
         raise ValueError
 
 
-def parse_immediate(operand):
+def parse_immediate(operand, bits):
     """Convert string operand into numerical value.
     
     For example: #0x1234: immediate = 4660 (decimal)
     """
     # int(X, 0) interprets the integer using hex prefix '0x' 
     # or binary prefix '0b'. Assumes decimal if no prefix.
-    return int(operand, 0)
+    n = int(operand, 0)
+    if n < 0:
+        n = twos_complement(-n, bits)
+    return n
 
 def assemble_to_text(text):
     """Parse assembly code to generate text instructions"""
@@ -286,3 +289,9 @@ def assemble_to_numerical(text):
     numerical_instructions = [assemble_instruction(line) for line in text_instructions]
     return numerical_instructions
 
+def twos_complement(n, bits):
+    """Compute the twos complement of a positive int"""
+    if n < 0 or n>= 2**bits:
+        raise ValueError
+    
+    return 2**bits - n

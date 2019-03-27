@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append("src/")
-from assembler import assemble_instruction, assemble_to_numerical, assemble_to_text
+from assembler import assemble_instruction, assemble_to_numerical, assemble_to_text, twos_complement
 
 def test_integer_file_instruction_parsing():
 
@@ -140,6 +140,9 @@ def test_beq_instruction():
 def test_bne_instruction():
     assert(assemble_instruction("bne $r1 $r2 0x1234") == 0b00010100001000100001001000110100)
 
+def test_bne_neg_instruction():
+    assert(assemble_instruction("bne $r2 $r9 -1") == 0b00010100010010011111111111111111)
+
 def test_bgez_instruction():
     assert(assemble_instruction("bgez $r1 0x1234") == 0b00000100001000010001001000110100)
 
@@ -181,3 +184,7 @@ def test_sw_instruction():
 
 def test_sb_instruction():
     assert(assemble_instruction("sb $r1 13($r2)") == 0b10100000010000010000000000001101)
+
+def test_twos_complement():
+    for n in range(2**16):
+        assert(n + twos_complement(n, 16) == 2**16)
