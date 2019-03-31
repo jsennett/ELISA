@@ -1,0 +1,37 @@
+TODO:
+
+GUI
+
+[ ]   implement breakpoints
+[ ]   implement step until breakpoint
+[ ]   implement step until completion
+[ ]   correctly export/restore program
+[ ]   catch exceptions rather than crashing
+[ ]   split display format into two options for data display and address/tag/idx display
+
+Pipeline
+
+[ ]   pipeline/no-pipeline mode
+[ ]   implement other operations
+      implement syscall to exit
+[ ]   test correctness
+
+Benchmarks
+
+[ ]   develop assembly benchmarks
+   
+Assembler
+
+[X]    Support negative immediate and offsets: this should convert to appropriate
+        size two's complement (16 bits for immediates)
+[ ]    Assemble floating point instructions
+[ ]    Documentation
+
+[ ]    Support sections (.data / .text)
+[ ]    Add in all MIPS instructions
+[ ]    Allow labels to refer to variables in .data
+[ ]    Code validation, helpful error messsages
+[ ]    Validate keywords (eg labels can be instruction names, registers 0-31)
+[ ]    Change register names to match MIPS naming ($v0, $t0, etc.)
+[ ]    support syscall command
+
