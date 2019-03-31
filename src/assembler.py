@@ -6,13 +6,14 @@ CS 535
 
 ELISA Assembler
 
-For useful documentation on MIPS instructions, see: 
+For useful documentation on MIPS instructions, see:
     https://www.eg.bucknell.edu/~csci320/mips_web/
     http://www.cs.ucsb.edu/~franklin/64/lectures/mipsassemblytutorial.pdf
 
 Required next steps:
 
-    Support negative immediates and offsets: this should convert to appropriate size two's complement (16 bits for immediates)
+    Support negative immediate and offsets: this should convert to appropriate
+        size two's complement (16 bits for immediates)
     Assemble floating point instructions
     Documentation
 
@@ -22,15 +23,17 @@ Possible future steps:
     Add in all MIPS instructions
     Allow labels to refer to variables in .data
     Code validation, helpful error messsages
-    Validate keywords (eg labels can be instruction names, registers must be 0-31)
+    Validate keywords (eg labels can be instruction names, registers 0-31)
     Change register names to match MIPS naming ($v0, $t0, etc.)
     support syscall command
 
 """
 
 # Instruction Types
-r_type = set(['add', 'sub', 'mult', 'div', 'and', 'or', 'xor', 'nor', 'jalr', 'jr', 'slt', 'sll', 'srl', 'sra'])
-i_type = set(['addi', 'andi', 'ori', 'xori', 'beq', 'bne', 'bgez', 'blez', 'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb'])
+r_type = set(['add', 'sub', 'mult', 'div', 'and', 'or', 'xor', 'nor', 'jalr',
+              'jr', 'slt', 'sll', 'srl', 'sra'])
+i_type = set(['addi', 'andi', 'ori', 'xori', 'beq', 'bne', 'bgez', 'blez',
+              'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb'])
 j_type = set(['j', 'jal'])
 
 # Instruction opcodes
@@ -69,32 +72,33 @@ opcodes = {
 }
 
 function_codes = {
-    'add': 0b100000,
-    'sub': 0b100010,
-    'sll': 0b000000,
-    'srl': 0b000010,
-    'sra': 0b000011,
-    'div': 0b011010,
-    'and': 0b100100,
-    'or':  0b100101,
-    'xor': 0b100110,
-    'nor': 0b100111,
-    "jalr":0b001001,
-    'jr':  0b001000,
-    'slt': 0b101010,
-    'mult':0b011000,
-    'div': 0b011010,
+    'add':  0b100000,
+    'sub':  0b100010,
+    'sll':  0b000000,
+    'srl':  0b000010,
+    'sra':  0b000011,
+    'div':  0b011010,
+    'and':  0b100100,
+    'or':   0b100101,
+    'xor':  0b100110,
+    'nor':  0b100111,
+    "jalr": 0b001001,
+    'jr':   0b001000,
+    'slt':  0b101010,
+    'mult': 0b011000,
+    'div':  0b011010,
 }
 
 
 def assemble_instruction(text_instruction):
+    """Convert text instruction to machine code"""
     print('parsing:', text_instruction)
     """Convert a string instruction into a numerical instruction"""
     split_instruction = text_instruction.split()
-    numerical_instruction = -1 # error value
+    numerical_instruction = -1  # error value
 
     mnemonic = split_instruction[0]
-    if mnemonic == "nop": 
+    if mnemonic == "nop":
         return 0
     opcode = opcodes[mnemonic]
 
@@ -116,8 +120,8 @@ def assemble_instruction(text_instruction):
             d = parse_register(split_instruction[1])
             shift = parse_immediate(split_instruction[3], 5)
             funct = function_codes.get(mnemonic, 0)
-            
-        # Special format for jalr: 
+
+        # Special format for jalr:
         elif mnemonic == 'jalr':
             s = parse_register(split_instruction[2])
             t = 0
@@ -140,7 +144,8 @@ def assemble_instruction(text_instruction):
             t, shift = parse_register_and_shift(split_instruction[3])
             funct = function_codes.get(mnemonic, 0)
 
-        numerical_instruction = (opcode << 26) + (s << 21) + (t << 16) + (d << 11) + (shift << 6) + (funct)
+        numerical_instruction = ((opcode << 26) + (s << 21) + (t << 16) +
+                                 (d << 11) + (shift << 6) + (funct))
 
     # If I-Type instruction
     elif mnemonic in i_type:
@@ -191,10 +196,12 @@ def parse_register_and_shift(operand):
     """
     # If a shift is specified
     if '(' in operand and ')' in operand:
-        shift = int(''.join([x for x in operand[:operand.find('(')] if x.isdigit()]))
-        reg = int(''.join([x for x in operand[operand.find('('):operand.find(')')] if x.isdigit()]))
+        lp = operand.find('(')
+        rp = operand.find(')')
+        shift = int(''.join([x for x in operand[:lp] if x.isdigit()]))
+        reg = int(''.join([x for x in operand[lp:rp] if x.isdigit()]))
 
-    # If no shift is specified
+    # If no shift is
     else:
         print(operand)
         shift = 0
@@ -204,7 +211,7 @@ def parse_register_and_shift(operand):
 
 def parse_register(operand):
     """Convert string register operand into numerical value.
-    
+
     For example: $R3: reg=3
     """
     # If specifying a register, return an int of the numerical chars
@@ -217,15 +224,16 @@ def parse_register(operand):
 
 def parse_immediate(operand, bits):
     """Convert string operand into numerical value.
-    
+
     For example: #0x1234: immediate = 4660 (decimal)
     """
-    # int(X, 0) interprets the integer using hex prefix '0x' 
+    # int(X, 0) interprets the integer using hex prefix '0x'
     # or binary prefix '0b'. Assumes decimal if no prefix.
     n = int(operand, 0)
     if n < 0:
         n = twos_complement(-n, bits)
     return n
+
 
 def assemble_to_text(text):
     """Parse assembly code to generate text instructions"""
@@ -236,15 +244,15 @@ def assemble_to_text(text):
     lines = text.split('\n')
 
     # Clean up lines
-    lines = [line[:line.find('#')] if line.find('#') >= 0  # Remove comments 
-                    else line for line in lines]
+    lines = [line[:line.find('#')] if line.find('#') >= 0  # Remove comments
+             else line for line in lines]
     lines = [line for line in lines if line != '']         # Remove empty lines
     lines = [line.strip() for line in lines]               # Strip whitespace
 
     # First pass: gather labels
-    # 'labels' is a mapping of a label to the idx 
+    # 'labels' is a mapping of a label to the idx
     # of the instruction idx following the label
-    labels = {}     
+    labels = {}
     instruction_idx = 0
     lines_without_labels = []
     for line in lines:
@@ -263,8 +271,8 @@ def assemble_to_text(text):
     lines_with_memory_locations = []
     for i, line in enumerate(lines_without_labels):
 
-        # TODO: confirm these are the only conditions where we could use a label.
-        # TODO: Correctly calculate branch and jump 
+        # TODO: confirm these are only conditions where we could use a label.
+        # TODO: Correctly calculate branch and jump
         if line.startswith('j'):
             for label in labels:
                 if label in line:
@@ -284,14 +292,17 @@ def assemble_to_text(text):
 
 
 def assemble_to_numerical(text):
-    """Convert a string (such as file contents) into a list of numerical instructions"""
+    """Convert a string (such as file contents) into a list of
+    numerical instructions"""
     text_instructions = assemble_to_text(text)
-    numerical_instructions = [assemble_instruction(line) for line in text_instructions]
+    numerical_instructions = [assemble_instruction(line)
+                              for line in text_instructions]
     return numerical_instructions
+
 
 def twos_complement(n, bits):
     """Compute the twos complement of a positive int"""
-    if n < 0 or n>= 2**bits:
+    if n < 0 or n >= 2**bits:
         raise ValueError
-    
+
     return 2**bits - n
