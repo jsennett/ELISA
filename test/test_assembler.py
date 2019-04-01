@@ -222,3 +222,43 @@ def test_cle_instruction():
 def test_clt_instruction():
     assert(assemble_instruction("c.lt.s $f0, $f1") == 0x4601003c)
 
+def test_syscall_instruction():
+    assert(assemble_instruction("syscall") == 0b001100)
+
+def test_section_parsing():
+
+    asm_with_sections = """
+        .text
+    main:
+        addi $r1 $r2 x
+        addi $r1 $r2 y
+
+        .data
+    x: 	.word 0x7B
+    y:	.word 0x1C8
+    """
+
+    asm_without_sections = """
+        addi $r1 $r2 0x7B
+        addi $r1 $r2 0x1C8
+    """
+    assert(assemble_to_numerical(asm_with_sections) ==
+           assemble_to_numerical(asm_without_sections))
+
+def test_section_parsing_no_text_section():
+
+    asm_with_sections = """
+    addi $r1 $r2 x
+    addi $r1 $r2 y
+
+        .data
+    x: 	.word 0x7B
+    y:	.word 0x1C8
+    """
+
+    asm_without_sections = """
+        addi $r1 $r2 0x7B
+        addi $r1 $r2 0x1C8
+    """
+    assert(assemble_to_numerical(asm_with_sections) ==
+           assemble_to_numerical(asm_without_sections))
