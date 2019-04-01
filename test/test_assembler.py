@@ -188,3 +188,37 @@ def test_sb_instruction():
 def test_twos_complement():
     for n in range(2**16):
         assert(n + twos_complement(n, 16) == 2**16)
+
+def test_lfp_instruction():
+    assert(assemble_instruction("l.s $f1, ($t2)")== 0xc5410000)
+
+def test_sfp_instruction():
+    assert(assemble_instruction("s.s $f1, ($t2)")== 0xe5410000)
+
+def test_add_fp_instruction():
+    assert(assemble_instruction("add.s $f1, $f2, $f3") == 0x46031040)
+
+def test_sub_fp_instruction():
+    assert(assemble_instruction("sub.s $f1, $f2, $f3") == 0x46031041)
+
+def test_mul_fp_instruction():
+    assert(assemble_instruction("mul.s $f1, $f2, $f3") == 0x46031042)
+
+def test_div_fp_instruction():
+    assert(assemble_instruction("div.s $f1, $f2, $f3") == 0x46031043)
+
+def test_cvt_sw_instruction():
+    assert(assemble_instruction("cvt.s.w $f0, $f1") == 0x46800820)
+
+def test_cvt_ws_instruction():
+    assert(assemble_instruction("cvt.w.s $f0, $f1") == 0x46000824)
+
+def test_ceq_instruction():
+    assert(assemble_instruction("c.eq.s $f0, $f1") == 0x46010032)
+
+def test_cle_instruction():
+    assert(assemble_instruction("c.le.s $f0, $f1") == 0x4601003e)
+
+def test_clt_instruction():
+    assert(assemble_instruction("c.lt.s $f0, $f1") == 0x4601003c)
+
