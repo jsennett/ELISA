@@ -1,21 +1,16 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Mar  7 10:06:58 2019
 
-@author: ayash
+Josh Sennett
+Yash Adhikari
+CS 535
 
-Next steps:
+Simulator
 
-    Support pipeline off / on
-    Support correct stalling for multi-cycle ALU operations
-    Write unit tests
-    Plan Mar27 Demo
 """
 from memory import Memory, Cache
-import sys
 
 import logging
-# logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 class Simulator:
@@ -31,7 +26,7 @@ class Simulator:
     In MIPS pipeline with a single memory
     – Load/store requires data access
     – Instruction fetch would have to stall for that cycle
-    • Would cause a pipeline “bubble”
+    - Would cause a pipeline “bubble”
 
     Prevent the instructions in the IF and ID stages from
     progressing down the pipeline – done by preventing the PC
@@ -50,7 +45,7 @@ class Simulator:
     """
 
     def __init__(self):
-        # logging.info("__init__()")
+        logging.info("__init__()")
 
         # Cycle count
         self.cycle = 1
@@ -65,13 +60,18 @@ class Simulator:
         self.reset_memory()
 
         # Create a set of destination registers that need to be updated
-        self.register_dependency = set()
+        # TODO: see if hi/lo/pc/control registers need to be tracked
+        self.R_dependences = set()  # Integer registers
+        self.F_dependences = set()  # FP registers
 
         # Status
         self.status = ""
 
+        # Enable or disable pipelining
+        self.pipeline_enabled = True
+
     def reset_registers(self):
-        # logging.info("reset_registers()")
+        logging.info("reset_registers()")
 
         # Registers
         self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
@@ -84,22 +84,21 @@ class Simulator:
         self.buffer = [0, 0, 0, 0]
 
     def reset_memory(self):
-        # logging.info("reset_memory()")
+        logging.info("reset_memory()")
         for level in self.memory_heirarchy:
             level.reset_data()
 
     def step(self):
-        # logging.info("step()")
+        logging.info("step()")
         self.status = ""
         self.WB()
         self.cycle += 1
 
-        print("Cycle {} - {}".format(self.cycle, self.status))
-        print("Current buffer contents:", self.buffer)
-        print()
+        logging.info("Cycle {} - {}".format(self.cycle, self.status))
+        logging.info("Current buffer contents:", self.buffer)
 
     def IF(self):
-        # print("IF()")
+        logging.info("IF()")
         # Get the instruction to be processed and pass it along to ID stage
         # TODO: Correctly implement when we finish a program.
 
@@ -129,7 +128,7 @@ class Simulator:
             return
 
     def ID(self):
-        # print("ID()")
+        logging.info("ID()")
         # TODO: Add destination registers to a destination table
         # and stall if a following instruction uses a source register in the destination table
 
@@ -155,7 +154,7 @@ class Simulator:
             funct = (current_instruction & 0x3F)
 
             # If data dependency then stall - pass a noop and don't call IF
-            if s in self.register_dependency or t in self.register_dependency:
+            if s in self.R_dependences or t in self.R_dependences:
                 self.status = "ID data dependency; " + self.status
                 self.buffer[1] = 0
                 return
@@ -166,7 +165,7 @@ class Simulator:
                 self.status = "ID R-type decoded; " + self.status
 
                 # Update register table
-                self.register_dependency.add(d)
+                self.R_dependences.add(d)
 
         # If j-type: [opcode, target]
         elif opcode in [2, 3]:
@@ -191,7 +190,7 @@ class Simulator:
             if opcode in [0b000100, 0b000101, 0b101011, 0b101000]:
 
                 # If data dependency then stall - pass a noop
-                if s in self.register_dependency or t in self.register_dependency:
+                if s in self.R_dependences or t in self.R_dependences:
                     self.status = "ID data dependency; " + self.status
                     self.buffer[1] = 0
                     return
@@ -205,14 +204,14 @@ class Simulator:
             else:
 
                 # If data dependency then stall - pass a noop
-                if s in self.register_dependency:
+                if s in self.R_dependences:
                     self.status = "ID data dependency; " + self.status
                     self.buffer[1] = 0
                     return
                 else:
                     self.status = "ID I-type decoded; " + self.status
                     decode_results = [opcode, self.R[s], t, immediate, PC]
-                    self.register_dependency.add(t)
+                    self.R_dependences.add(t)
 
         # Update the buffer
         self.buffer[1] = decode_results
@@ -231,7 +230,7 @@ class Simulator:
         self.IF()
 
     def EX(self):
-        # logging.info("EX()")
+        logging.info("EX()")
 
         # If noop:
         if self.buffer[1] == 0:
@@ -328,7 +327,7 @@ class Simulator:
         self.ID()
 
     def MEM(self):
-        # logging.info("MEM()")
+        logging.info("MEM()")
         # The memory stage accesses the main memory. It first attempts to get
         # the write or read from cache within 1 clock cycle (changable),
         # and if it cannot, a stall is incurred
@@ -412,12 +411,12 @@ class Simulator:
             return
 
     def WB(self):
-        # logging.info("WB()")
+        logging.info("WB()")
 
         if self.buffer[3] != 0:
             reg, value = self.buffer[3].copy()
             self.R[reg] = value
-            self.register_dependency.remove(reg) # Clear reg dependency
+            self.R_dependences.remove(reg) # Clear reg dependency
             self.status = "WB {} to $r{}; ".format(value, reg) + self.status
         else:
             self.status = "WB noop; " + self.status
@@ -425,7 +424,7 @@ class Simulator:
         self.MEM()
 
     def set_instructions(self, instructions):
-        # logging.info("set_instructions()")
+        logging.info("set_instructions()")
         """Set instructions in memory.
 
         Args:
