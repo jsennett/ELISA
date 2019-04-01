@@ -8,6 +8,9 @@ GUI
 [ ]   correctly export/restore program
 [ ]   catch exceptions rather than crashing
 [ ]   split display format into two options for data display and address/tag/idx display
+[X]   Use pipeline-enabled button to set attribute in simulator
+[X]   Get rid of LRU/Write Policy buttons.
+[X]   Force users to use valid cache sizes (2^X)
 
 Pipeline
 
@@ -25,14 +28,13 @@ Assembler
 
 [X]    Support negative immediate and offsets: this should convert to appropriate
         size two's complement (16 bits for immediates)
-[ ]    Assemble floating point instructions
+[X]    Assemble floating point instructions
+[X]    Support sections (.data / .text)
+[X]    Add in all MIPS instructions
+[X]    Allow labels to refer to variables in .data
+[X]    Change register names to match MIPS naming ($v0, $t0, etc.)
+[X]    support syscall command
 [ ]    Documentation
-
-[ ]    Support sections (.data / .text)
-[ ]    Add in all MIPS instructions
-[ ]    Allow labels to refer to variables in .data
-[ ]    Code validation, helpful error messsages
+  Optional
 [ ]    Validate keywords (eg labels can be instruction names, registers 0-31)
-[ ]    Change register names to match MIPS naming ($v0, $t0, etc.)
-[ ]    support syscall command
-
+[ ]    Code validation, helpful error messsages
