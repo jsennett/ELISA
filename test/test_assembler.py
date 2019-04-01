@@ -189,11 +189,11 @@ def test_twos_complement():
     for n in range(2**16):
         assert(n + twos_complement(n, 16) == 2**16)
 
-def test_lfp_instruction():
-    assert(assemble_instruction("l.s $f1, ($t2)")== 0xc5410000)
+def test_ls_instruction():
+    assert(assemble_instruction("l.s $f1, 0($r10)")== 0xc5410000)
 
-def test_sfp_instruction():
-    assert(assemble_instruction("s.s $f1, ($t2)")== 0xe5410000)
+def test_ss_instruction():
+    assert(assemble_instruction("s.s $f1, 0($r10)")== 0xe5410000)
 
 def test_add_fp_instruction():
     assert(assemble_instruction("add.s $f1, $f2, $f3") == 0x46031040)

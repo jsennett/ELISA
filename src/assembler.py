@@ -31,9 +31,10 @@ Possible future steps:
 
 # Instruction Types
 r_type = set(['add', 'sub', 'mult', 'div', 'and', 'or', 'xor', 'nor', 'jalr',
-              'jr', 'slt', 'sll', 'srl', 'sra'])
+              'jr', 'slt', 'sll', 'srl', 'sra', 'add.s', 'sub.s', 'mul.s',
+              'div.s', 'cvt.w.s', 'cvt.s.w', 'c.eq.s', 'c.lt.s', 'c.le.s'])
 i_type = set(['addi', 'andi', 'ori', 'xori', 'beq', 'bne', 'bgez', 'blez',
-              'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb'])
+              'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb', 'l.s', 's.s'])
 j_type = set(['j', 'jal'])
 
 # Instruction opcodes
@@ -98,6 +99,13 @@ function_codes = {
     'slt':  0b101010,
     'mult': 0b011000,
     'div':  0b011010,
+    'add.s': 0b000000,
+    'sub.s': 0b000001,
+    'mul.s': 0b000010,
+    'div.s': 0b000011,
+    'c.eq.s': 0b110010,
+    'c.le.s': 0b111110,
+    'c.lt.s': 0b111100,
 }
 
 
@@ -116,8 +124,39 @@ def assemble_instruction(text_instruction):
     # If R-Type instruction
     if mnemonic in r_type:
 
+        # Floating point ALU: |op|0b10000|s|t|d|func|
+        if mnemonic in ['add.s', 'sub.s', 'mul.s', 'div.s']:
+            s = 0b10000
+            t = parse_register(split_instruction[3])
+            d = parse_register(split_instruction[2])
+            shift = parse_register(split_instruction[1])
+            funct = function_codes.get(mnemonic)
+            print(mnemonic, s, t, d, shift, funct)
+            print(mnemonic, bin(s), bin(t), bin(d), bin(shift), bin(funct))
+
+        elif mnemonic == 'cvt.w.s':
+            s = 0x10
+            t = 0
+            d = parse_register(split_instruction[2])
+            shift = parse_register(split_instruction[1])
+            funct = 0x24
+
+        elif mnemonic == 'cvt.s.w':
+            s = 0x14
+            t = 0
+            d = parse_register(split_instruction[2])
+            shift = parse_register(split_instruction[1])
+            funct = 0x20
+
+        elif mnemonic in ['c.eq.s', 'c.lt.s', 'c.le.s']:
+            s = 0x10
+            t = parse_register(split_instruction[2])
+            d = parse_register(split_instruction[1])
+            shift = 0
+            funct = function_codes.get(mnemonic, 0)
+
         # Special format for mult/div
-        if mnemonic in ['mult', 'div']:
+        elif mnemonic in ['mult', 'div']:
             shift = 0
             s = parse_register(split_instruction[1])
             t = parse_register(split_instruction[2])
@@ -150,9 +189,9 @@ def assemble_instruction(text_instruction):
 
         # All others follow the same format
         else:
-            d = parse_register(split_instruction[1])
             s = parse_register(split_instruction[2])
             t, shift = parse_register_and_shift(split_instruction[3])
+            d = parse_register(split_instruction[1])
             funct = function_codes.get(mnemonic, 0)
 
         numerical_instruction = ((opcode << 26) + (s << 21) + (t << 16) +
@@ -171,7 +210,7 @@ def assemble_instruction(text_instruction):
                 t = 0
 
         # Other instructions use offset, not immediate
-        elif mnemonic in ['lw', 'lb', 'sw', 'sb']:
+        elif mnemonic in ['lw', 'lb', 'sw', 'sb', 'l.s', 's.s']:
             t = parse_register(split_instruction[1])
             s, i = parse_register_and_shift(split_instruction[2])
 
