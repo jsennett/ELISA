@@ -69,6 +69,17 @@ class Simulator:
 
         # Status
         self.status = ""
+        
+        # Enable or disable pipeline - passed value from GUI
+        self.enable_pipeline = True
+        # flag to only load one instruction at a time (No pipeline)
+        # logic only used when pipeline turned off (runs in the background)
+        self.instruction_processing = False 
+        
+        # EX stage may have instructions that need multiple cycles to complete
+        # which must be tracked
+        self.EX_cycles_remaining = 0
+        self.EX_multiple_cycle_instruction = False
 
     def reset_registers(self):
         # logging.info("reset_registers()")
@@ -102,34 +113,46 @@ class Simulator:
         # print("IF()")
         # Get the instruction to be processed and pass it along to ID stage
         # TODO: Correctly implement when we finish a program.
-
-        # Get instruction from memory
-        instruction = self.memory_heirarchy[0].read(self.PC//4) # TODO: read from address rather than line number
-
-        # If stalled on instruction fetch from memory
-        if instruction == "wait":
-            # Insert noop
-            self.buffer[0] = 0
-            self.status = "IF wait to load inst; " + self.status
-            return
-
-        # If noop
-        elif instruction[0] == 0:
-            self.buffer[0] = 0
-            self.status = "IF noop; " + self.status
-            return
-
-        # If a real instruction
+        
+        
+        # if (pipelining is turned on) or (pipelining is turned off but the next
+        # instruction is ready to be loaded / no instruction is processing)
+        if self.enable_pipeline or not(self.instruction_processing):
+            # Get instruction from memory
+            instruction = self.memory_heirarchy[0].read(self.PC//4) # TODO: read from address rather than line number
+    
+            # If stalled on instruction fetch from memory
+            if instruction == "wait":
+                # Insert noop
+                self.buffer[0] = 0
+                self.status = "IF wait to load inst; " + self.status
+                return
+    
+            # If noop
+            elif instruction[0] == 0:
+                self.buffer[0] = 0
+                self.status = "IF noop; " + self.status
+                return
+    
+            # If a real instruction
+            else:
+    
+                # Increment the program counter
+                # TOOD: Should we use PC and NPC variables? Check the logic here.
+                self.PC += 4
+                
+                self.buffer[0] = [instruction[0], self.PC]
+                self.status = "IF fetched instruction; " + self.status
+                
+                # Change status to currently processing instruction
+                self.instruction_processing = True
+                
+                return
+        
+        # else: pass on noops (do not update PC)
         else:
-
-            # Increment the program counter
-            # TOOD: Should we use PC and NPC variables? Check the logic here.
-            self.PC += 4
+            self.buffer[0] = 0
             
-            self.buffer[0] = [instruction[0], self.PC]
-            self.status = "IF fetched instruction; " + self.status
-            return
-
     def ID(self):
         # print("ID()")
         # TODO: Add destination registers to a destination table
@@ -258,23 +281,40 @@ class Simulator:
                 execute_results = [opcode, funct, d, s-t]
                 self.status = "EX sub; " + self.status
 
-            # TODO: Implement remaining r-type instructions
-            else:
-                raise ValueError
 
             # TODO: if multiple cycle ALU op, stall for one cycle.
             # If multi-cycle ALU op, add attributes for:
             # self.EX_midway_through_a_multicycle_operation
             # self.EX_cycles_remaining
             # if there are cycles remaining, decrement count and insert a noop.
-            # if funct in [multicycle_ops] and self.EX_cycles_remaining != 0:
-            #     self.EX_cycles_remaining = 1
-            #     if self.EX_cycles_remaining == 0:
-            #         # execute_results = (perform the ALU OP, and return it)
-            #     else:
-            #         execute_results = 0x0
-            #         self.EX_cycles_remaining -= 1
+            elif funct in [0b011000, 0b011010]:
+            #and self.EX_multiple_cycle_instruction != 0:
+                if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
+                    # mulitply
+                    if funct == 0b011000:
+                        execute_results = [opcode, funct, d, s*t]
+                        self.status = "EX mult; " + self.status
+                    # divide
+                    elif funct == 0b011010:
+                        execute_results = [opcode, funct, d, s/t]
+                        self.status = "EX div; " + self.status
+                    
+                    self.EX_multiple_cycle_instruction = False
+                    
+                else:
+                    if not(self.EX_multiple_cycle_instruction):
+                        self.EX_cycles_remaining = 1
+                        self.EX_multiple_cycle_instruction = True
+                    execute_results = 0x0
+                    self.EX_cycles_remaining -= 1
+                    
+                    self.status = "EX stall; " + self.status
+                    return
 
+            # TODO: Implement remaining r-type instructions
+            else:
+                raise ValueError
+        
         # If J-Type
         elif current_instruction[0] in [0x2, 0x3]:
             opcode, target, PC = current_instruction
@@ -305,10 +345,11 @@ class Simulator:
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX beq, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
-                # and WB stage)
+                # and WB stage) *need to let software know that instruction is 
+                # completed - pass 0x1 - for disabled pipeline
                 else:
                     self.status = "EX beq, not taken; " + self.status
-                    execute_results = 0x0
+                    execute_results = 0x1
             
             # BNE 
             elif opcode == 0b000101:
@@ -317,9 +358,10 @@ class Simulator:
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bne taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
-                # and WB stage)
+                # and WB stage) *need to let software know that instruction is 
+                # completed - pass 0x1 - for disabled pipeline
                 else:
-                    execute_results = 0x0
+                    execute_results = 0x1
                     self.status = "EX bne, not taken; " + self.status
 
             # TODO: Implement remaining r-type instructions
@@ -341,7 +383,16 @@ class Simulator:
             self.status = "MEM noop; " + self.status
             self.EX()
             return
-
+        
+        # If BNE or BEQ not taken, let WB stage know that instruction is 
+        # completed
+        if self.buffer[2] == 0x1:
+            self.buffer[3] = 0x1
+            self.status = "MEM noop; " + self.status
+            self.EX()
+            return
+        
+        
         current_instruction = self.buffer[2].copy()
 
         # If lw, lb, sw, sb
@@ -359,7 +410,7 @@ class Simulator:
                     self.status = "MEM wait to store; " + self.status
                     return
                 else:
-                    self.buffer[3] = 0
+                    self.buffer[3] = 0x1
                     self.status = "MEM store successful; " + self.status
                     self.EX()
                     return
@@ -390,7 +441,7 @@ class Simulator:
             opcode, t = current_instruction
 
             # Flush the pipeline when the branch is taken
-            self.buffer = [0, 0, 0, 0]
+            self.buffer = [0, 0, 0, 0x1]
             self.PC = t
             self.status = "MEM branch taken to PC={}; ".format(hex(t)) + self.status
             self.EX()
@@ -405,6 +456,13 @@ class Simulator:
             self.EX()
             return
         
+        # If j - do not need WB stage but we need to turn off the currently 
+        # processing instructions flag
+        elif current_instruction[0] == 0b000010:
+            self.buffer[3] = 0x1
+            self.EX()
+            return
+        
         # TODO: Other instructions need to be caught; 
         # this else shouldn't capture all other instruction types.
         else:
@@ -416,11 +474,19 @@ class Simulator:
     def WB(self):
         # logging.info("WB()")
         
-        if self.buffer[3] != 0:
+        if self.buffer[3] != 0 and self.buffer[3] != 0x1:
             reg, value = self.buffer[3].copy()
             self.R[reg] = value
             self.register_dependency.remove(reg) # Clear reg dependency
             self.status = "WB {} to $r{}; ".format(value, reg) + self.status
+            
+            # not processing any instruction (used when pipelining is off)
+            self.instruction_processing = False
+            
+        # instructions that do not need the write back stage to execute but we 
+        # still need to turn the processing instruction flag to false
+        elif self.buffer[3] == 0x1:
+            self.instruction_processing = False
         else:
             self.status = "WB noop; " + self.status
 
