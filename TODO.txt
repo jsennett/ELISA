@@ -11,9 +11,10 @@ GUI
 
 Pipeline
 
-[ ]   pipeline/no-pipeline mode
+[X]   pipeline/no-pipeline mode
+[ ]   Handle multiple stage ALU operations
 [ ]   implement other operations
-      implement syscall to exit
+[ ]   implement syscall to exit
 [ ]   test correctness
 
 Benchmarks
