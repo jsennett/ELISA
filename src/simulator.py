@@ -50,19 +50,21 @@ class Simulator:
         # Cycle count
         self.cycle = 1
 
-         # Memory
+        # Memory
         DRAM = Memory(lines=2**12, delay=100)
         L2 = Cache(lines=256, words_per_line=4, delay=3, associativity=1, next_level=DRAM, name="L2")
         L1 = Cache(lines=128, words_per_line=4, delay=0, associativity=1, next_level=L2, name="L1")
         self.memory_heirarchy = [L1, L2, DRAM]
 
+        # For convenience, define NOOP format at each stage
+        self.IF_NOOP = [0, 0]                 # Fmt: [instruction, PC]
+        self.ID_NOOP = [0, 0, 0, 0, 0, 0, 0]  # [op, r, s, t, shift, fnct, PC]
+        self.EX_NOOP = [0, 0, 0, 0]           # [opcode, funct, d, value]
+        self.MEM_NOOP = [0, 0]                # Fmt: [reg, value]
+
+        # (Re)set values of registers and memory
         self.reset_registers()
         self.reset_memory()
-
-        # Create a set of destination registers that need to be updated
-        # TODO: see if hi/lo/pc/control registers need to be tracked
-        self.R_dependences = set()  # Integer registers
-        self.F_dependences = set()  # FP registers
 
         # Status
         self.status = ""
@@ -84,8 +86,13 @@ class Simulator:
         # TODO: Set PC to where the first instruction is.
         self.PC = 0
 
+        # Create a set of destination registers that need to be updated
+        # TODO: see if hi/lo/pc/control registers need to be tracked
+        self.R_dependences = set()  # Integer registers
+        self.F_dependences = set()  # FP registers
+
         # Initialize buffer with no-ops
-        self.buffer = [0, 0, 0, 0]
+        self.buffer = [self.IF_NOOP, self.ID_NOOP, self.EX_NOOP, self.MEM_NOOP]
 
     def reset_memory(self):
         logging.info("reset_memory()")
@@ -102,6 +109,24 @@ class Simulator:
         logging.info("Current buffer contents:", self.buffer)
 
     def IF(self):
+        """Instruction Fetch stage
+
+        Input read from self.memory_heirchy[0]
+        Outputs buffer values to self.buffer[0]
+
+        Input:
+            [instruction]
+            int instruction: machine code instruction
+
+        Output:
+            stall: [0, PC]
+            operation: [instruction, PC]
+
+        Read from memory at address self.PC (or, line self.PC//4).
+        If stalled accessing memory to fetch instruction, stall
+          with a noop and do not increment the PC.
+        Otherwise, increment the PC by 4.
+        """
         logging.info("IF()")
         # Get the instruction to be processed and pass it along to ID stage
         # TODO: Correctly implement when we finish a program.
@@ -112,36 +137,43 @@ class Simulator:
         # If stalled on instruction fetch from memory
         if instruction == "wait":
             # Insert noop
-            self.buffer[0] = 0
+            self.buffer[0] = [0, 0]
             self.status = "IF wait to load inst; " + self.status
             return
 
         # Increment the program counter
         self.PC += 4
 
-        # If noop
-        if instruction[0] == 0:
-            self.buffer[0] = 0
-            self.status = "IF noop; " + self.status
-            return
-
-        # If a real instruction (including syscall)
-        else:
-            self.buffer[0] = [instruction[0], self.PC]
-            self.status = "IF fetched instruction; " + self.status
-            return
+        # Pass instruction and PC to the buffer. Note that a NOOP is a sll
+        # instruction, so we are not treating it specially
+        self.buffer[0] = [instruction[0], self.PC]
+        self.status = "IF fetched instruction; " + self.status
+        return
 
     def ID(self):
-        logging.info("ID()")
-        # TODO: Add destination registers to a destination table
-        # and stall if a following instruction uses a source register in the destination table
+        """Instruction Decode stage
 
-        # If noop:
-        if self.buffer[0] == 0:
-            self.buffer[1] = 0
-            self.status = "ID noop; " + self.status
-            self.IF()
-            return
+        Input buffer values from self.buffer[0]
+        Outputs buffer values to self.buffer[1]
+
+        Input:
+            [instruction, PC]
+            int instruction: machine code instruction
+            int PC: Program counter at time of instruction fetch
+
+        Output:
+            R: [opcode, s, t, d, shift, funct, PC]
+            I: [opcode, s, t, immediate, PC]
+            J: NOOP; force stall and flush the pipeline
+            syscode: [instruction, PC]
+            NOOP: [0, 0, 0, 0, 0, 0, PC]
+
+        Note that s, t, d are either register numbers or register values
+        depending on the instruction so that the next stages have the
+        information needed to work correctly
+
+        """
+        logging.info("ID()")
 
         # If syscall
         if self.buffer[0][0] == 0b001100:
@@ -165,18 +197,21 @@ class Simulator:
             funct = (current_instruction & 0x3F)
 
             # If data dependency then stall - pass a noop and don't call IF
+            # r0 cannot be changed, so it should not cause a stall
             if s in self.R_dependences or t in self.R_dependences:
                 self.status = "ID data dependency; " + self.status
-                self.buffer[1] = 0
+                self.buffer[1] = self.ID_NOOP.copy()
                 return
-            else:
 
+            else:
                 # TODO: use self.F instead of self.R for floating point operations
                 decode_results = [opcode, self.R[s], self.R[t], d, shift, funct, PC]
                 self.status = "ID R-type decoded; " + self.status
 
-                # Update register table
-                self.R_dependences.add(d)
+                # Update dependency table. Note that a destination of r0
+                # does not cause a dependency since it has a fixed value zero
+                if d != 0:
+                    self.R_dependences.add(d)
 
         # If j-type: [opcode, target]
         elif opcode in [2, 3]:
@@ -203,7 +238,7 @@ class Simulator:
                 # If data dependency then stall - pass a noop
                 if s in self.R_dependences or t in self.R_dependences:
                     self.status = "ID data dependency; " + self.status
-                    self.buffer[1] = 0
+                    self.buffer[1] = self.ID_NOOP.copy()
                     return
                 else:
                     self.status = "ID I-type decoded; " + self.status
@@ -217,7 +252,7 @@ class Simulator:
                 # If data dependency then stall - pass a noop
                 if s in self.R_dependences:
                     self.status = "ID data dependency; " + self.status
-                    self.buffer[1] = 0
+                    self.buffer[1] = self.ID_NOOP.copy()
                     return
                 else:
                     self.status = "ID I-type decoded; " + self.status
@@ -232,7 +267,7 @@ class Simulator:
         if opcode in [0x2, 0x3]:
 
             # Insert a noop in the previous buffer
-            self.buffer[0] = 0
+            self.buffer[0] = [0, PC]
 
             # Change the PC based on the jump address
             self.PC = (PC & 0xF0000000) | (target << 2)
@@ -241,17 +276,34 @@ class Simulator:
         self.IF()
 
     def EX(self):
+        """Execute Stage
+
+        Input buffer values from self.buffer[1]
+        Outputs buffer values to self.buffer[2]
+
+        Input:
+            R: [opcode, s, t, d, shift, funct, PC]
+            I: [opcode, s, t, immediate, PC]
+            J: NOOP; force stall and flush the pipeline
+            syscode: [instruction, PC]
+
+        Output:
+            R: [opcode, d, funct, result]
+            I:
+                load/store: [opcode, t, value]
+                branch:     [opcode, target]
+            J:
+                jal: [opcode, target, PC]
+                j:   [opcode, target]
+
+            syscode: [instruction, PC]
+            NOOP:    [0, 0, 0, 0]
+
+        """
         logging.info("EX()")
 
-        # If noop:
-        if self.buffer[1] == 0:
-            self.buffer[2] = 0
-            self.status = "EX noop; " + self.status
-            self.ID()
-            return
-
         # If syscall:
-        elif self.buffer[1][0] == 0b001100:
+        if self.buffer[1][0] == 0b001100:
             self.buffer[2] = self.buffer[1].copy()
             self.status = "EX syscall; " + self.status
             self.ID()
@@ -273,22 +325,15 @@ class Simulator:
                 execute_results = [opcode, funct, d, s-t]
                 self.status = "EX sub; " + self.status
 
+            # If sll; note that this also includes noops
+            elif funct == 0:
+                execute_results = [opcode, funct, d, t << shift]
+                self.status = "EX sll; " + self.status
+
             # TODO: Implement remaining r-type instructions
             else:
-                raise ValueError('Unknown funct {} for R-Instruction with opcode: {}'.format(funct, opcode))
-
-            # TODO: if multiple cycle ALU op, stall for one cycle.
-            # If multi-cycle ALU op, add attributes for:
-            # self.EX_midway_through_a_multicycle_operation
-            # self.EX_cycles_remaining
-            # if there are cycles remaining, decrement count and insert a noop.
-            # if funct in [multicycle_ops] and self.EX_cycles_remaining != 0:
-            #     self.EX_cycles_remaining = 1
-            #     if self.EX_cycles_remaining == 0:
-            #         # execute_results = (perform the ALU OP, and return it)
-            #     else:
-            #         execute_results = 0x0
-            #         self.EX_cycles_remaining -= 1
+                raise ValueError('Unknown funct {:05b} for R-Type with \
+                                 opcode: {:06b}'.format(funct, opcode))
 
         # If J-Type
         elif current_instruction[0] in [0x2, 0x3]:
@@ -300,8 +345,12 @@ class Simulator:
                 execute_results = [opcode, target, PC]
 
             # If J
-            else:
+            elif opcode == 0x2:
                 execute_results = [opcode, target]
+
+            # TODO: Implement remaining j-type instructions
+            else:
+                raise ValueError('Unknown J-Type opcode {:06b}'.format(opcode))
 
         # If I-Type
         else:
@@ -323,7 +372,7 @@ class Simulator:
                 # and WB stage)
                 else:
                     self.status = "EX beq, not taken; " + self.status
-                    execute_results = 0x0
+                    execute_results = self.EX_NOOP.copy()
 
             # BNE
             elif opcode == 0b000101:
@@ -334,7 +383,7 @@ class Simulator:
                 # If branch is not taken push a noop (nothing occurs during MEM
                 # and WB stage)
                 else:
-                    execute_results = 0x0
+                    execute_results = self.EX_NOOP.copy()
                     self.status = "EX bne, not taken; " + self.status
 
             # TODO: Implement remaining r-type instructions
@@ -345,19 +394,38 @@ class Simulator:
         self.ID()
 
     def MEM(self):
+        """Memory Stage
+
+        Input buffer values from self.buffer[2]
+        Outputs buffer values to self.buffer[3]
+          May read from, or write to memory
+
+        Input:
+            R: [opcode, d, funct, result]
+            I:
+                load/store: [opcode, t, value]
+                branch:     [opcode, target]
+            J:
+                jal: [opcode, target, PC]
+                j:   [opcode, target]
+
+            syscode: [instruction, PC]
+            NOOP:    [0, 0, 0, 0]
+
+        Output:
+
+            syscode: [instruction, PC]
+
+
+
+        """
         logging.info("MEM()")
         # The memory stage accesses the main memory. It first attempts to get
         # the write or read from cache within 1 clock cycle (changable),
         # and if it cannot, a stall is incurred
 
-        # If noop:
-        if self.buffer[2] == 0:
-            self.buffer[3] = 0
-            self.status = "MEM noop; " + self.status
-            self.EX()
-            return
-
-        elif self.buffer[2][0] == 0b001100:
+        # If syscall
+        if self.buffer[2][0] == 0b001100:
             self.buffer[3] = self.buffer[2].copy()
             self.status = "MEM syscall; " + self.status
             self.EX()
@@ -376,11 +444,11 @@ class Simulator:
                 response = self.memory_heirarchy[0].write(memory_address=s//4, value=t)
                 if response == "wait":
                     # insert noop, don't call EX() since MEM is stalled
-                    self.buffer[3] = 0
+                    self.buffer[3] = self.MEM_NOOP
                     self.status = "MEM wait to store; " + self.status
                     return
                 else:
-                    self.buffer[3] = 0
+                    self.buffer[3] = self.MEM_NOOP
                     self.status = "MEM store successful; " + self.status
                     self.EX()
                     return
@@ -392,7 +460,7 @@ class Simulator:
                 response = self.memory_heirarchy[0].read(memory_address=s//4)
                 if response == "wait":
                     # insert noop, don't call EX() since MEM is stalled
-                    self.buffer[3] = 0
+                    self.buffer[3] = self.MEM_NOOP.copy()
                     self.status = "MEM wait to load; " + self.status
                     return
                 else:
@@ -404,14 +472,15 @@ class Simulator:
 
             elif opcode in [0b101000, 0b100000]:
                 # TODO: Code lb, wb
-                raise ValueError
+                raise ValueError("LB and WB operations not coded yet")
 
         # If bne, beq (condition known to be taken; otherwise, replaced by noop)
         elif current_instruction[0] in [0b000101, 0b000100]:
             opcode, t = current_instruction
 
             # Flush the pipeline when the branch is taken
-            self.buffer = [0, 0, 0, 0]
+            self.buffer = [self.IF_NOOP, self.ID_NOOP,
+                           self.EX_NOOP, self.MEM_NOOP]
             self.PC = t
             self.status = "MEM branch taken to PC={}; ".format(hex(t)) + self.status
             self.EX()
@@ -437,25 +506,32 @@ class Simulator:
     def WB(self):
         logging.info("WB()")
 
-        if self.buffer[3] == 0:
-            self.status = "WB noop; " + self.status
-            self.MEM()
-
-        elif self.buffer[3][0] == 0b001100:
+        # If syscall, note the end of program
+        if self.buffer[3][0] == 0b001100:
             self.status = "WB syscall; " + self.status
-            self.MEM()
             self.end_of_program = True
+            self.MEM()
+            return
+
+        reg, value = self.buffer[3].copy()
+
+        # If noop or no writeback needed, don't write back anything
+        if reg == 0:
+            self.status = "WB noop; "
 
         else:
-            reg, value = self.buffer[3].copy()
+
+            # Write the value to the register
+            self.R[reg] = value
 
             # Clear reg dependency
-            # TODO: Check if R or F register depending on instruction
-            # We currently only support R register dependencies
-            self.R[reg] = value
             self.R_dependences.remove(reg)
             self.status = "WB {} to $r{}; ".format(value, reg) + self.status
-            self.MEM()
+
+            # TODO: Check if R or F register depending on instruction
+            # We currently only support R register dependencies
+
+        self.MEM()
 
     def set_instructions(self, instructions):
         logging.info("set_instructions()")
