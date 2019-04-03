@@ -2,9 +2,9 @@ TODO:
 
 GUI
 
-[ ]   implement breakpoints
-[ ]   implement step until breakpoint
-[ ]   implement step until completion
+[X]   implement breakpoints
+[X]   implement step until breakpoint
+[X]   implement step until completion
 [ ]   correctly export/restore program
 [ ]   catch exceptions rather than crashing
 [ ]   split display format into two options for data display and address/tag/idx display
@@ -34,7 +34,7 @@ Assembler
 [X]    Allow labels to refer to variables in .data
 [X]    Change register names to match MIPS naming ($v0, $t0, etc.)
 [X]    support syscall command
-[ ]    Documentation
+[-]    Documentation
   Optional
 [ ]    Validate keywords (eg labels can be instruction names, registers 0-31)
 [ ]    Code validation, helpful error messsages
