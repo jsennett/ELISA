@@ -45,10 +45,13 @@ class Simulator:
     """
 
     def __init__(self):
-        logging.info("__init__()")
+        """Initialize a Simulator.
 
-        # Cycle count
-        self.cycle = 1
+        Define configuration options and NOOP formats for convenient use later
+        Then, set changing attributes using the reset()
+
+        """
+        logging.info("__init__()")
 
         # Memory
         DRAM = Memory(lines=2**12, delay=100)
@@ -62,19 +65,14 @@ class Simulator:
         self.EX_NOOP = [0, 0, 0, 0]           # [opcode, funct, d, value]
         self.MEM_NOOP = [0, 0]                # Fmt: [reg, value]
 
-        # (Re)set values of registers and memory
-        self.reset_registers()
-        self.reset_memory()
-
-        # Status
-        self.status = ""
-
         # Enable or disable pipelining
         self.pipeline_enabled = True
 
+        # (Re)set values of registers and memory
+        self.reset()
 
-    def reset_registers(self):
-        logging.info("reset_registers()")
+    def reset(self):
+        logging.info("reset()")
 
         # Whether the program is terminated
         self.end_of_program = False
@@ -86,6 +84,9 @@ class Simulator:
         # TODO: Set PC to where the first instruction is.
         self.PC = 0
 
+        # Cycle count
+        self.cycle = 1
+
         # Create a set of destination registers that need to be updated
         # TODO: see if hi/lo/pc/control registers need to be tracked
         self.R_dependences = set()  # Integer registers
@@ -94,10 +95,12 @@ class Simulator:
         # Initialize buffer with no-ops
         self.buffer = [self.IF_NOOP, self.ID_NOOP, self.EX_NOOP, self.MEM_NOOP]
 
-    def reset_memory(self):
-        logging.info("reset_memory()")
+        # Reset memory values
         for level in self.memory_heirarchy:
             level.reset_data()
+
+        # Status message; initialized empty
+        self.status = ""
 
     def step(self):
         logging.info("step()")
@@ -132,7 +135,8 @@ class Simulator:
         # TODO: Correctly implement when we finish a program.
 
         # Get instruction from memory
-        instruction = self.memory_heirarchy[0].read(self.PC//4) # TODO: read from address rather than line number
+        instruction = self.memory_heirarchy[0].read(self.PC//4)
+        # TODO: read from address rather than line number
 
         # If stalled on instruction fetch from memory
         if instruction == "wait":

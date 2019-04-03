@@ -381,7 +381,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Convert assembly into machine code
         numerical_instructions = assembler.assemble_to_numerical(code)
 
-        # Load instructions in the simulator
+        # Reset before setting the new instructions
+        self.simulator.reset()
         self.simulator.set_instructions(numerical_instructions)
 
         # Update the instructions table
@@ -402,8 +403,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         logging.info("GUI: reset()")
 
         # Reset the simulator
-        self.simulator.reset_memory()
-        self.simulator.reset_registers()
+        self.simulator.reset()
+        self.update_data()
 
         # Reset the instruction table
         self.ui.instructionTable.setRowCount(0)
