@@ -85,7 +85,7 @@ class Simulator:
         self.PC = 0
 
         # Cycle count
-        self.cycle = 1
+        self.cycle = 0
 
         # Create a set of destination registers that need to be updated
         # TODO: see if hi/lo/pc/control registers need to be tracked
