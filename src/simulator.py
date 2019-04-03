@@ -10,7 +10,7 @@ Simulator
 from memory import Memory, Cache
 
 import logging
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 
 class Simulator:
@@ -70,8 +70,12 @@ class Simulator:
         # Enable or disable pipelining
         self.pipeline_enabled = True
 
+
     def reset_registers(self):
         logging.info("reset_registers()")
+
+        # Whether the program is terminated
+        self.end_of_program = False
 
         # Registers
         self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
@@ -121,7 +125,7 @@ class Simulator:
             self.status = "IF noop; " + self.status
             return
 
-        # If a real instruction
+        # If a real instruction (including syscall)
         else:
             self.buffer[0] = [instruction[0], self.PC]
             self.status = "IF fetched instruction; " + self.status
@@ -136,6 +140,13 @@ class Simulator:
         if self.buffer[0] == 0:
             self.buffer[1] = 0
             self.status = "ID noop; " + self.status
+            self.IF()
+            return
+
+        # If syscall
+        if self.buffer[0][0] == 0b001100:
+            self.buffer[1] = self.buffer[0].copy()
+            self.status = "ID syscall; " + self.status
             self.IF()
             return
 
@@ -239,6 +250,13 @@ class Simulator:
             self.ID()
             return
 
+        # If syscall:
+        elif self.buffer[1][0] == 0b001100:
+            self.buffer[2] = self.buffer[1].copy()
+            self.status = "EX syscall; " + self.status
+            self.ID()
+            return
+
         current_instruction = self.buffer[1].copy()
 
         # If R-Type
@@ -257,7 +275,7 @@ class Simulator:
 
             # TODO: Implement remaining r-type instructions
             else:
-                raise ValueError
+                raise ValueError('Unknown funct {} for R-Instruction with opcode: {}'.format(funct, opcode))
 
             # TODO: if multiple cycle ALU op, stall for one cycle.
             # If multi-cycle ALU op, add attributes for:
@@ -321,7 +339,7 @@ class Simulator:
 
             # TODO: Implement remaining r-type instructions
             else:
-                raise ValueError
+                raise ValueError("Unknown opcode for I-Type instruction: {}".format(opcode))
 
         self.buffer[2] = execute_results
         self.ID()
@@ -336,6 +354,12 @@ class Simulator:
         if self.buffer[2] == 0:
             self.buffer[3] = 0
             self.status = "MEM noop; " + self.status
+            self.EX()
+            return
+
+        elif self.buffer[2][0] == 0b001100:
+            self.buffer[3] = self.buffer[2].copy()
+            self.status = "MEM syscall; " + self.status
             self.EX()
             return
 
@@ -413,15 +437,25 @@ class Simulator:
     def WB(self):
         logging.info("WB()")
 
-        if self.buffer[3] != 0:
-            reg, value = self.buffer[3].copy()
-            self.R[reg] = value
-            self.R_dependences.remove(reg) # Clear reg dependency
-            self.status = "WB {} to $r{}; ".format(value, reg) + self.status
-        else:
+        if self.buffer[3] == 0:
             self.status = "WB noop; " + self.status
+            self.MEM()
 
-        self.MEM()
+        elif self.buffer[3][0] == 0b001100:
+            self.status = "WB syscall; " + self.status
+            self.MEM()
+            self.end_of_program = True
+
+        else:
+            reg, value = self.buffer[3].copy()
+
+            # Clear reg dependency
+            # TODO: Check if R or F register depending on instruction
+            # We currently only support R register dependencies
+            self.R[reg] = value
+            self.R_dependences.remove(reg)
+            self.status = "WB {} to $r{}; ".format(value, reg) + self.status
+            self.MEM()
 
     def set_instructions(self, instructions):
         logging.info("set_instructions()")

@@ -141,7 +141,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.dataTabs.setCurrentIndex(0)
         self.statusBar().showMessage("Welcome!")
 
-
     def configure_cache(self):
         logging.info("GUI: configure_cache()")
 
@@ -249,6 +248,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     def step(self):
         logging.info("GUI: step()")
 
+        if self.simulator.end_of_program:
+            self.statusBar().showMessage("End of program.")
+            return
+
         try:
             self.simulator.step()  # update simulator
             self.update_data()     # update UI
@@ -269,20 +272,57 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.error_dialog.showMessage(str(e))
             return
 
+        # Step n times, or until end of program.
         for _ in range(n):
+
+            # If end of program before end of n steps
+            if self.simulator.end_of_program:
+                self.update_data()
+                self.statusBar().showMessage("End of program.")
+                return
+
             self.simulator.step()
+
         self.update_data()
         self.statusBar().showMessage("{} steps taken.".format(n))
 
     def step_breakpoint(self):
         # TODO: Implement this method
         logging.info("GUI: step_breakpoint()")
-        pass
+
+        # Step at least once; break out of loop once we hit a breakpoint,
+        # or once our program ends
+        while True:
+            self.simulator.step()
+
+            # Initial memory location of text; hardcoded 0 for now
+            text_offset = 0x0
+
+            # Instruction num; PC + text offset, plus 1 since 1-indexed
+            instruction_num = (self.simulator.PC + text_offset) // 4
+
+            # If we're at the end of the program, stop stepping
+            if self.simulator.end_of_program:
+                self.statusBar().showMessage("End of program.")
+                break
+
+            # Current breakpoint?
+            logging.warning("Getting BP value from cell ({}, {})".format(instruction_num, 3))
+            bp_cell = self.ui.instructionTable.item(instruction_num, 3)
+            if bp_cell is not None and bp_cell.text() == 'X':
+                # Note: breakpoints are 1-indexed while cells are 0 indexed
+                # So, the breakpoint is instruction_num + 1
+                self.statusBar().showMessage("Stepped until breakpoint {}".format(instruction_num + 1))
+                break
+
+        self.update_data()
 
     def step_completion(self):
         # TODO: Implement this method
         logging.info("GUI: step_completion()")
-        pass
+
+        while not self.simulator.end_of_program:
+            self.simulator.step()
 
     def import_file(self):
         logging.info("GUI: import_file()")
@@ -372,6 +412,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def add_breakpoint(self):
         logging.info("GUI: add_breakpoint()")
+
+        # Validate breakpoint
         try:
             n = int(self.ui.breakpoint.text())
             if n < 1:
