@@ -13,7 +13,8 @@ r_type = set(['add', 'sub', 'mult', 'div', 'and', 'or', 'xor', 'nor', 'jalr',
               'jr', 'slt', 'sll', 'srl', 'sra', 'add.s', 'sub.s', 'mul.s',
               'div.s', 'cvt.w.s', 'cvt.s.w', 'c.eq.s', 'c.lt.s', 'c.le.s'])
 i_type = set(['addi', 'andi', 'ori', 'xori', 'beq', 'bne', 'bgez', 'blez',
-              'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb', 'l.s', 's.s'])
+              'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb', 'l.s', 's.s',
+              'bc1t', 'bc1f'])
 j_type = set(['j', 'jal'])
 
 # Instruction opcodes
@@ -60,6 +61,8 @@ opcodes = {
     "c.eq.s": 0b010001,
     "c.le.s": 0b010001,
     "c.lt.s": 0b010001,
+    "bc1t": 0b010001,
+    "bc1f": 0b010001,
 }
 
 function_codes = {

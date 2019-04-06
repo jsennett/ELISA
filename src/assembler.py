@@ -131,6 +131,11 @@ def assemble_instruction(text_instruction):
             t = parse_register(split_instruction[2])
             i = parse_immediate(split_instruction[3], 16)
 
+        elif mnemonic in ['bc1t', 'bc1f']:
+            s = 0x8
+            t = 0 if mnemonic == 'bc1f' else 1
+            i = parse_immediate(split_instruction[1], 16)
+
         # All others follow the same format
         else:
             t = parse_register(split_instruction[1])

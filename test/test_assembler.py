@@ -222,6 +222,12 @@ def test_cle_instruction():
 def test_clt_instruction():
     assert(assemble_instruction("c.lt.s $f0, $f1") == 0x4601003c)
 
+def test_bc1f_instruction():
+    assert(assemble_instruction("bc1f 0x2") == 0x45000002)
+
+def test_bc1t_instruction():
+    assert(assemble_instruction("bc1t 0x1") == 0x45010001)
+
 def test_syscall_instruction():
     assert(assemble_instruction("syscall") == 0b001100)
 
