@@ -5,20 +5,21 @@ GUI
 [X]   implement breakpoints
 [X]   implement step until breakpoint
 [X]   implement step until completion
-[ ]   correctly export/restore program
-[ ]   catch exceptions rather than crashing
-[ ]   split display format into two options for data display and address/tag/idx display
+[X]   correctly export/restore program
+[X]   catch exceptions rather than crashing
 [X]   Use pipeline-enabled button to set attribute in simulator
 [X]   Get rid of LRU/Write Policy buttons.
 [X]   Force users to use valid cache sizes (2^X)
+[ ]   split display format into two options for data display and address/tag/idx display
 
 Pipeline
 
 [X]   pipeline/no-pipeline mode
 [ ]   Handle multiple stage ALU operations
 [ ]   implement other operations
-[ ]   implement syscall to exit
+[-]   implement syscall to exit
 [ ]   test correctness
+[ ]   Condition code registers after every ALU
 
 Benchmarks
 
@@ -38,3 +39,52 @@ Assembler
   Optional
 [ ]    Validate keywords (eg labels can be instruction names, registers 0-31)
 [ ]    Code validation, helpful error messsages
+
+
+Instructions
+      Arithmetic
+[ ]    ADD
+[ ]    ADDI
+[ ]    SUB
+[ ]    SLL
+[ ]    SRL
+[ ]    MULT
+[ ]    DIV
+[ ]    AND
+[ ]    ANDI
+[ ]    OR
+[ ]    ORI
+[ ]    XOR
+[ ]    XORI
+[ ]    NOR
+[ ]    BEQ
+[ ]    BNE
+[ ]    BGEZ
+[ ]    BLEZ
+[ ]    BGZ
+[ ]    BLZ
+[ ]    J
+[ ]    JAL
+[ ]    JR
+[ ]    JALR
+[ ]    SLT
+[ ]    SLTI
+[ ]    LB
+[ ]    LW
+[ ]    SB
+[ ]    SW
+[ ]    ADD.S
+[ ]    SUB.S
+[ ]    MUL.S
+[ ]    DIV.S
+[ ]    CVT.S.W
+[ ]    CVT.W.S
+[ ]    C.EQ.S
+[ ]    C.LE.S
+[ ]    C.LT.S
+[ ]    BC1T
+[ ]    BC1F
+[ ]    L.S
+[ ]    S.S
+[ ]    SYSCALL
+
