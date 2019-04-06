@@ -188,3 +188,77 @@ def test_sb_instruction():
 def test_twos_complement():
     for n in range(2**16):
         assert(n + twos_complement(n, 16) == 2**16)
+
+def test_ls_instruction():
+    assert(assemble_instruction("l.s $f1, 0($r10)")== 0xc5410000)
+
+def test_ss_instruction():
+    assert(assemble_instruction("s.s $f1, 0($r10)")== 0xe5410000)
+
+def test_add_fp_instruction():
+    assert(assemble_instruction("add.s $f1, $f2, $f3") == 0x46031040)
+
+def test_sub_fp_instruction():
+    assert(assemble_instruction("sub.s $f1, $f2, $f3") == 0x46031041)
+
+def test_mul_fp_instruction():
+    assert(assemble_instruction("mul.s $f1, $f2, $f3") == 0x46031042)
+
+def test_div_fp_instruction():
+    assert(assemble_instruction("div.s $f1, $f2, $f3") == 0x46031043)
+
+def test_cvt_sw_instruction():
+    assert(assemble_instruction("cvt.s.w $f0, $f1") == 0x46800820)
+
+def test_cvt_ws_instruction():
+    assert(assemble_instruction("cvt.w.s $f0, $f1") == 0x46000824)
+
+def test_ceq_instruction():
+    assert(assemble_instruction("c.eq.s $f0, $f1") == 0x46010032)
+
+def test_cle_instruction():
+    assert(assemble_instruction("c.le.s $f0, $f1") == 0x4601003e)
+
+def test_clt_instruction():
+    assert(assemble_instruction("c.lt.s $f0, $f1") == 0x4601003c)
+
+def test_syscall_instruction():
+    assert(assemble_instruction("syscall") == 0b001100)
+
+def test_section_parsing():
+
+    asm_with_sections = """
+        .text
+    main:
+        addi $r1 $r2 x
+        addi $r1 $r2 y
+
+        .data
+    x: 	.word 0x7B
+    y:	.word 0x1C8
+    """
+
+    asm_without_sections = """
+        addi $r1 $r2 0x7B
+        addi $r1 $r2 0x1C8
+    """
+    assert(assemble_to_numerical(asm_with_sections) ==
+           assemble_to_numerical(asm_without_sections))
+
+def test_section_parsing_no_text_section():
+
+    asm_with_sections = """
+    addi $r1 $r2 x
+    addi $r1 $r2 y
+
+        .data
+    x: 	.word 0x7B
+    y:	.word 0x1C8
+    """
+
+    asm_without_sections = """
+        addi $r1 $r2 0x7B
+        addi $r1 $r2 0x1C8
+    """
+    assert(assemble_to_numerical(asm_with_sections) ==
+           assemble_to_numerical(asm_without_sections))

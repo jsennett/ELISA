@@ -16,7 +16,7 @@ programs (or the entire state), and resetting the state.
 
 The user interface will need to be extended to
 support running to completion, breakpoints, viewing memory in different formats
-(instruction, decimal, hex, etc.), and managing the configurations of the simulator. 
+(instruction, decimal, hex, etc.), and managing the configurations of the simulator.
 
 Display clock cycles
 
@@ -80,7 +80,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Connect a simulator
         self.simulator = Simulator()
 
-        # TODO: Add animation pane, if enough time.
         # TODO: Add a status box with helpful messages (eg configuration loaded, step executed).
 
         # Update data tables, pulling info from simulator
@@ -89,13 +88,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Add button functionality
         #     TODO:
         # step until breakpoint
-        # step until completion        
-        # reset
-        # Eviction Policy
-        # Write-back/write-through box      
-        # reset
-        # breakpointss
-        # save/restore program
+        # step until completion
+        # export program
+        # restore program
 
         self.ui.setConfigurationButton.clicked.connect(self.configure_cache)
         self.ui.stepButton.clicked.connect(self.step)
@@ -136,7 +131,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.cacheTable.horizontalHeader().setVisible(True)
         self.ui.cacheTable.verticalHeader().setVisible(False)
 
-        # Set lines per 
+        # Set lines per
         self.ui.L1WordsPerLine.setCurrentIndex(2)
         self.ui.L2WordsPerLine.setCurrentIndex(2)
         self.ui.L3WordsPerLine.setCurrentIndex(2)
@@ -146,7 +141,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.dataTabs.setCurrentIndex(0)
         self.statusBar().showMessage("Welcome!")
 
-
     def configure_cache(self):
         logging.info("GUI: configure_cache()")
 
@@ -154,36 +148,32 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         configuration = {
             # L1
             "L1Enabled": self.ui.L1Enabled.isChecked(),
-            "L1Associativity": self.ui.L1Associativity.currentText(),              
+            "L1Associativity": self.ui.L1Associativity.currentText(),
             "L1Lines": self.ui.L1Lines.text(),
             "L1WordsPerLine": self.ui.L1WordsPerLine.currentText(),
             "L1Cycles": self.ui.L1Cycles.text(),
 
             # L2
             "L2Enabled": self.ui.L2Enabled.isChecked(),
-            "L2Associativity": self.ui.L2Associativity.currentText(),              
+            "L2Associativity": self.ui.L2Associativity.currentText(),
             "L2Lines": self.ui.L2Lines.text(),
             "L2WordsPerLine": self.ui.L2WordsPerLine.currentText(),
             "L2Cycles": self.ui.L2Cycles.text(),
 
             # L3
             "L3Enabled": self.ui.L3Enabled.isChecked(),
-            "L3Associativity": self.ui.L3Associativity.currentText(),              
+            "L3Associativity": self.ui.L3Associativity.currentText(),
             "L3Lines": self.ui.L3Lines.text(),
             "L3WordsPerLine": self.ui.L3WordsPerLine.currentText(),
             "L3Cycles": self.ui.L3Cycles.text(),
 
             # Final column
-            "writePolicyBox": self.ui.writePolicyBox.currentText(),
-            "evictionPolicyBox": self.ui.evictionPolicyBox.currentText(),
             "memoryLines": self.ui.memoryLines.text(),
             "memoryCycles": self.ui.memoryCycles.text(),
             "pipelineEnabledButton": self.ui.pipelineEnabledButton.isChecked()
         }
         logging.info('GUI: Configuration:\n\t' + '\n\t'.join(["{}-{}".format(k, v) for (k, v) in configuration.items()]))
 
-        # TODO: Implement write and eviction policy settings + pipeline 
-        # enabled, and use these configurations to set the policies.
         # With a new configuration of the cache, the simulator is reset.
         self.simulator = Simulator()
         memory_heirarchy = []
@@ -205,21 +195,26 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
                 if configuration[level + "Enabled"]:
 
+                    # Calculate number of lines
+                    lines = 2**int(configuration[level + 'Lines'])
+
                     # Parse associativity options
                     if configuration[level + "Associativity"] == "Direct-Mapped":
                         associativity = 1
                     elif configuration[level + "Associativity"] == "N-way":
-                        associativity = configuration[level + "Lines"]
+                        associativity = lines
                     else:
-                        associativity = int(''.join(x for x in configuration[level + "Associativity"] if x.isdigit()))
+                        associativity = int(''.join(
+                            x for x in configuration[level + "Associativity"]
+                            if x.isdigit()))
 
                     # Associativity shouldn't be greater than # lines
-                    if associativity > int(configuration[level + "Lines"]):
+                    if associativity > lines:
                         raise ValueError('Cannot set cache associativity higher than # lines')
 
                     # Create Cache Objects
                     cache = Cache(
-                        lines=int(configuration[level + "Lines"]),
+                        lines=2**int(configuration[level + "Lines"]),
                         words_per_line=int(configuration[level + "WordsPerLine"]),
                         delay=int(configuration[level + "Cycles"]),
                         associativity=associativity,
@@ -241,6 +236,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for level in self.simulator.memory_heirarchy:
             logging.info(level)
 
+        # Enable or disable pipeline depending on user choice
+        self.simulator.pipeline_enabled = configuration['pipelineEnabledButton']
+
         # Last, clear and update the cache and memory tables, and load instructions (if any)
         self.update_data()
         self.load()
@@ -250,9 +248,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     def step(self):
         logging.info("GUI: step()")
 
+        if self.simulator.end_of_program:
+            self.statusBar().showMessage("End of program.")
+            return
+
         try:
-            self.simulator.step() # update simulator
-            self.update_data()    # update UI
+            self.simulator.step()  # update simulator
+            self.update_data()     # update UI
             self.statusBar().showMessage("Step taken.")
         except AttributeError as e:
             msg = str(e) + "... Perhaps you haven't loaded any instructions yet?"
@@ -270,27 +272,59 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.error_dialog.showMessage(str(e))
             return
 
+        # Step n times, or until end of program.
         for _ in range(n):
+
+            # If end of program before end of n steps
+            if self.simulator.end_of_program:
+                self.update_data()
+                self.statusBar().showMessage("End of program.")
+                return
+
             self.simulator.step()
+
         self.update_data()
         self.statusBar().showMessage("{} steps taken.".format(n))
 
     def step_breakpoint(self):
         # TODO: Implement this method
         logging.info("GUI: step_breakpoint()")
-        pass
+
+        # Step at least once; break out of loop once we hit a breakpoint,
+        # or once our program ends
+        while True:
+            self.simulator.step()
+
+            # Initial memory location of text; hardcoded 0 for now
+            text_offset = 0x0
+
+            # Instruction num; PC + text offset, plus 1 since 1-indexed
+            instruction_num = (self.simulator.PC + text_offset) // 4
+
+            # If we're at the end of the program, stop stepping
+            if self.simulator.end_of_program:
+                self.statusBar().showMessage("End of program.")
+                break
+
+            # Current breakpoint?
+            logging.warning("Getting BP value from cell ({}, {})".format(instruction_num, 3))
+            bp_cell = self.ui.instructionTable.item(instruction_num, 3)
+            if bp_cell is not None and bp_cell.text() == 'X':
+                # Note: breakpoints are 1-indexed while cells are 0 indexed
+                # So, the breakpoint is instruction_num + 1
+                self.statusBar().showMessage("Stepped until breakpoint {}".format(instruction_num + 1))
+                break
+
+        self.update_data()
 
     def step_completion(self):
         # TODO: Implement this method
         logging.info("GUI: step_completion()")
-        pass
+
+        while not self.simulator.end_of_program:
+            self.simulator.step()
 
     def import_file(self):
-        # TODO:
-        # A next step would be to import a program in progress -- including 
-        # all data, configurations, and current state of the program.
-        # This requires serialize/deserializing all parts of the program.
-        # So, do this part last.
         logging.info("GUI: import_file()")
 
         # Get the filename
@@ -316,7 +350,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def export_file(self):
         # TODO:
-        # A next step would be to export a program in progress -- including 
+        # A next step would be to export a program in progress -- including
         # all data, configurations, and current state of the program.
         # This requires serialize/deserializing all parts of the program.
         # So, do this part last.
@@ -347,7 +381,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Convert assembly into machine code
         numerical_instructions = assembler.assemble_to_numerical(code)
 
-        # Load instructions in the simulator
+        # Reset before setting the new instructions
+        self.simulator.reset()
         self.simulator.set_instructions(numerical_instructions)
 
         # Update the instructions table
@@ -355,8 +390,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for idx in range(len(text_instructions)):
             self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(hex(4 * idx)))
             self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(text_instructions[idx]))
-            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("{:032b}".format(numerical_instructions[idx])[2:]))
-   
+            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("{:08X}".format(numerical_instructions[idx])[2:]))
+
         self.ui.tabs.setCurrentIndex(1)
         self.statusBar().showMessage("Instructions loaded.")
 
@@ -368,8 +403,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         logging.info("GUI: reset()")
 
         # Reset the simulator
-        self.simulator.reset_memory()
-        self.simulator.reset_registers()
+        self.simulator.reset()
+        self.update_data()
 
         # Reset the instruction table
         self.ui.instructionTable.setRowCount(0)
@@ -378,6 +413,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def add_breakpoint(self):
         logging.info("GUI: add_breakpoint()")
+
+        # Validate breakpoint
         try:
             n = int(self.ui.breakpoint.text())
             if n < 1:
@@ -410,21 +447,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage("Breakpont removed at instruction #: {}".format(n))
 
     def update_data(self):
-        # TODO: 
-        #   currently, we are rewriting the entire memory contents each time we update
-        #   which is once per step-1/step-N. This is currently quite fast (no noticable lag)
-        #   but if it slows down performance, we can change this to update only parts that change.
-        #   For example, one method updates for a new configuration (heavy update)
-        #   and another updates if only a few values change (light update)
         logging.info("GUI: update_data()")
 
         # Update the program counter and cycle count
         self.ui.currentCycle.setText(str(self.simulator.cycle))
         self.ui.programCounter.setText(self.display(self.simulator.PC))
 
-
         # Determine table dimensions
-        register_rows, register_columns = 32, 2 
+        register_rows, register_columns = 32, 2
 
         # 0-indexed vertical header for registers $R0-$R32, $F0-$F32
         self.ui.registerTable.setVerticalHeaderLabels([str(n) for n in range(32)])
@@ -432,7 +462,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         memory_rows, memory_columns = self.simulator.memory_heirarchy[-1].lines, 2
         if len(self.simulator.memory_heirarchy) == 1:
             # If there is no cache, just have a placeholder table.
-            cache_rows, cache_columns = 32, (4 + 1) 
+            cache_rows, cache_columns = 32, (4 + 1)
             self.ui.cacheTable.setHorizontalHeaderLabels(["Level", "Tag", "Index", "Valid", "Word 1"])
 
         else:
@@ -472,13 +502,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for idx, value in enumerate(self.simulator.memory_heirarchy[-1].data):
             self.ui.memoryTable.setItem(idx,0, QtWidgets.QTableWidgetItem(hex(4 * idx)))
             self.ui.memoryTable.setItem(idx,1, QtWidgets.QTableWidgetItem(self.display(value)))
-            
+
         # Cache table
         for level in range(len(self.simulator.memory_heirarchy) - 1):
             for idx, row in enumerate(self.simulator.memory_heirarchy[level].data):
 
                 # Index within the cache table
-                # Since cache levels are squashed into a single table, 
+                # Since cache levels are squashed into a single table,
                 # L2 lines should appear after L1.
                 cache_table_idx = self.idx_to_cache_table_idx(idx, level)
 
@@ -491,7 +521,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 for offset in range(self.simulator.memory_heirarchy[level].words_per_line):
                     self.ui.cacheTable.setItem(cache_table_idx, 4 + offset, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][1 + offset])))
 
-        # Pipeline table: 4 buffer rows, Cycle, PC, status, dependencies and # memory levels 
+        # Pipeline table: 4 buffer rows, Cycle, PC, status, dependencies and # memory levels
         pipeline_rows = 4 + 5 + len(self.simulator.memory_heirarchy)
         self.ui.pipelineTable.setRowCount(pipeline_rows)
 
@@ -499,8 +529,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.pipelineTable.setItem(0, 0, QtWidgets.QTableWidgetItem(str(self.simulator.status)))
 
         # Dependencies
-        self.ui.pipelineTable.setItem(1, 0, QtWidgets.QTableWidgetItem(str(['$r'+str(n) for n in self.simulator.register_dependency])))
-        self.ui.pipelineTable.setItem(2, 0, QtWidgets.QTableWidgetItem("[]")) # TODO: Fill in with F dependencies
+        self.ui.pipelineTable.setItem(1, 0, QtWidgets.QTableWidgetItem(str(['$r'+str(n) for n in self.simulator.R_dependences])))
+        self.ui.pipelineTable.setItem(2, 0, QtWidgets.QTableWidgetItem(str(['$f'+str(n) for n in self.simulator.F_dependences])))
 
         # Buffer rows
         for idx in range(4):
@@ -509,14 +539,21 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Cycle, PC
         self.ui.pipelineTable.setItem(7, 0, QtWidgets.QTableWidgetItem(str(self.simulator.cycle)))
         self.ui.pipelineTable.setItem(8, 0, QtWidgets.QTableWidgetItem(str(self.simulator.PC)))
-        
+
         # Memory and Cache levels
         for idx, level in enumerate(self.simulator.memory_heirarchy):
             self.ui.pipelineTable.setItem(idx + 9, 0, QtWidgets.QTableWidgetItem(str(level)))
 
+        # Pipelining enabled
+        self.ui.pipelineTable.setItem(9 + len(self.simulator.memory_heirarchy),
+             0, QtWidgets.QTableWidgetItem(self.simulator.pipeline_enabled))
+
         # Set pipline table row labels
-        pipelineHeaders = (['Status', '$R Dependencies', '$F Dependencies', 'IF -> ID', 'ID -> EX', 'EX -> MEM', 'MEM-> WB', 'Cycle', 'PC'] + 
-                                   [level.name for level in self.simulator.memory_heirarchy])
+        pipelineHeaders = (
+            ['Status', '$R Dependencies', '$F Dependencies'] +
+            ['IF -> ID', 'ID -> EX', 'EX -> MEM', 'MEM-> WB', 'Cycle', 'PC'] +
+            [level.name for level in self.simulator.memory_heirarchy] +
+            ['Pipeline Enabled'] )
         self.ui.pipelineTable.setVerticalHeaderLabels(pipelineHeaders)
 
 
@@ -539,7 +576,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         display_format = self.ui.memoryDisplayBox.currentText()
         if display_format == "Binary":
             if n >= 0:
-                return bin(n)[2:] 
+                return bin(n)[2:]
             else:
                 return '-' + bin(n)[3:]
         elif display_format == "Hexadecimal":
@@ -561,7 +598,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Write the contents of the editor to file
         settings = QSettings(filename, QSettings.IniFormat)
-        
+
         for w in QtWidgets.qApp.allWidgets():
             mo = w.metaObject()
             if w.objectName() != "":
@@ -570,16 +607,20 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     settings.setValue("{}/{}".format(w.objectName(), name), w.property(name))
 
     def restore(self):
-        # TODO: Restore is buggy; it does not restore labels and table contents.
-        # We may have to manually iterate over settings to save the right things to the INI.
         # Get the filename
         options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.DontUseNativeDialog # this prevents OSX warning message
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "","All Files (*);;INI Files (*.ini)", options=options)
+
+        # Prevent OSX warning message
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Open File", "", "All Files (*);;INI Files (*.ini)",
+            options=options)
+
+        # If a file was selected
         if filename:
             logging.info("GUI: restoring program " + filename)
+        # Else, if dialog escaped, return without importing
         else:
-            # If escaped, return without importing.
             return
 
         settings = QSettings(filename, QSettings.IniFormat)
@@ -591,22 +632,26 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 if w.objectName() != "":
                     for i in range(mo.propertyCount()):
                         name = mo.property(i).name()
-                        val = settings.value("{}/{}".format(w.objectName(), name), w.property(name))
+                        val = settings.value(
+                            "{}/{}".format(w.objectName(), name),
+                             w.property(name))
                         w.setProperty(name, val)
         else:
             logging.info("GUI: failed to restore " + filename)
 
-def main():    
+
+def main():
     app = QtWidgets.QApplication(sys.argv)
 
     app.setWindowIcon(QtGui.QIcon('gui/ELISA.png'))
     QCoreApplication.setOrganizationName("ELISA")
     QCoreApplication.setOrganizationDomain("github.com/jsennett/ELISA.git")
-    QCoreApplication.setApplicationName("ELISA")    
+    QCoreApplication.setApplicationName("ELISA")
 
     application = ApplicationWindow()
     application.show()
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()
