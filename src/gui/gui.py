@@ -108,12 +108,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.memoryDisplayBox.activated.connect(self.update_data)
 
         # Add input validators
-        self.ui.L1Lines.setValidator(QtGui.QIntValidator(1, 2**26))
-        self.ui.L1Cycles.setValidator(QtGui.QIntValidator(0, 1000))
-        self.ui.L2Lines.setValidator(QtGui.QIntValidator(1, 2**26))
-        self.ui.L2Cycles.setValidator(QtGui.QIntValidator(0, 1000))
-        self.ui.L3Lines.setValidator(QtGui.QIntValidator(1, 2**26))
-        self.ui.L3Cycles.setValidator(QtGui.QIntValidator(0, 1000))
+        self.ui.L1Lines.setValidator(QtGui.QIntValidator(1, 32))
+        self.ui.L1Cycles.setValidator(QtGui.QIntValidator(0, 300))
+        self.ui.L2Lines.setValidator(QtGui.QIntValidator(1, 32))
+        self.ui.L2Cycles.setValidator(QtGui.QIntValidator(0, 300))
+        self.ui.L3Lines.setValidator(QtGui.QIntValidator(1, 32))
+        self.ui.L3Cycles.setValidator(QtGui.QIntValidator(0, 300))
         self.ui.memoryCycles.setValidator(QtGui.QIntValidator(0, 1000))
         self.ui.memoryLines.setValidator(QtGui.QIntValidator(1, 32))
         self.ui.breakpoint.setValidator(QtGui.QIntValidator(1, 10000))
@@ -179,6 +179,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         memory_heirarchy = []
         try:
 
+            # Validate memory size
+            memory_size = int(configuration['memoryLines'])
+            if memory_size > 32 or memory_size <= 0:
+                raise ValueError("Invalid memory size: {}".format(memory_size))
+            lines = 2**memory_size
+
+            # Validate delay
+            memory_cycles = int(configuration["memoryCycles"])
+            if memory_cycles < 0 or memory_cycles > 300:
+                raise ValueError("Unreasonable memory delay specified: {}".format(memory_cycles))
+
             # Create Memory Objects
             DRAM = Memory(
                 lines=2**int(configuration["memoryLines"]),
@@ -196,7 +207,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 if configuration[level + "Enabled"]:
 
                     # Calculate number of lines
-                    lines = 2**int(configuration[level + 'Lines'])
+                    cache_size = int(configuration[level + 'Lines'])
+                    if cache_size > 32 or cache_size <= 0:
+                        raise ValueError("Invalid cache size: {}".format(cache_size))
+                    lines = 2**cache_size
 
                     # Parse associativity options
                     if configuration[level + "Associativity"] == "Direct-Mapped":
@@ -212,11 +226,16 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     if associativity > lines:
                         raise ValueError('Cannot set cache associativity higher than # lines')
 
+                    # Cycles should be reasonable
+                    cache_cycles = int(configuration[level + "Cycles"])
+                    if cache_cycles < 0 or cache_cycles > 300:
+                        raise ValueError("Unreasonable cache delay specified: {}".format(cache_cycles))
+
                     # Create Cache Objects
                     cache = Cache(
-                        lines=2**int(configuration[level + "Lines"]),
+                        lines=lines,
                         words_per_line=int(configuration[level + "WordsPerLine"]),
-                        delay=int(configuration[level + "Cycles"]),
+                        delay=int(cache_cycles),
                         associativity=associativity,
                         next_level=memory_heirarchy[0],
                         noisy=False,
@@ -375,11 +394,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         code = self.ui.codeEditor.toPlainText()
         logging.info("Current editor contents: \n\t {}".format(code))
 
-        # Parse text into assembly instructions
-        text_instructions = assembler.assemble_to_text(code)
+        try:
+            # Parse text into assembly instructions
+            text_instructions = assembler.assemble_to_text(code)
 
-        # Convert assembly into machine code
-        numerical_instructions = assembler.assemble_to_numerical(code)
+            # Convert assembly into machine code
+            numerical_instructions = assembler.assemble_to_numerical(code)
+        except Exception as e:
+            self.error_dialog.showMessage("Unable to assemble instructions." +
+                                          "\nPleases check your syntax.")
+            return
+
 
         # Reset before setting the new instructions
         self.simulator.reset()
@@ -585,26 +610,37 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             return str(n)
 
     def save(self):
-        # TODO: Restore is buggy; it does not restore labels and table contents.
-        # We may have to manually iterate over settings to save the right things to the INI.
-        # Get the filename
+        """Save a program's state, including all information needed to
+        restore the program from its current state.
+
+        This includes:
+            All of the simulator, including registers, cache, memory, PC, etc
+            All of the data in the instructionTable
+        """
         options = QtWidgets.QFileDialog.Options()
         options |= QtWidgets.QFileDialog.DontUseNativeDialog # this prevents OSX warning message
-        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save File", "","All Files (*);;INI Files (*.ini)", options=options)
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Save File", "","All Files (*);;DAT Files (*.dat)", options=options)
         if filename:
             logging.info("GUI: saving program to " + filename)
         else:
             return
 
         # Write the contents of the editor to file
-        settings = QSettings(filename, QSettings.IniFormat)
+        # filename is the var to use
+        import pickle
 
-        for w in QtWidgets.qApp.allWidgets():
-            mo = w.metaObject()
-            if w.objectName() != "":
-                for i in range(mo.propertyCount()):
-                    name = mo.property(i).name()
-                    settings.setValue("{}/{}".format(w.objectName(), name), w.property(name))
+        instruction_rows = self.ui.instructionTable.rowCount()
+        instruction_cols = self.ui.instructionTable.columnCount()
+        instruction_contents = [ [None] * instruction_cols
+                                for _ in range(instruction_rows)]
+        for i in range(instruction_rows):
+            for j in range(instruction_cols):
+                cell =  self.ui.instructionTable.item(i, j)
+                if cell is not None:
+                    instruction_contents[i][j] = cell.text()
+
+        with open(filename, 'wb') as f:
+            pickle.dump([self.simulator, instruction_contents], f)
 
     def restore(self):
         # Get the filename
@@ -613,7 +649,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Prevent OSX warning message
         options |= QtWidgets.QFileDialog.DontUseNativeDialog
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Open File", "", "All Files (*);;INI Files (*.ini)",
+            self, "Open File", "", "All Files (*);;DAT Files (*.dat)",
             options=options)
 
         # If a file was selected
@@ -623,22 +659,21 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         else:
             return
 
-        settings = QSettings(filename, QSettings.IniFormat)
-        file_info = QFileInfo(settings.fileName())
+        import pickle
 
-        if file_info.exists() and file_info.isFile():
-            for w in QtWidgets.qApp.allWidgets():
-                mo = w.metaObject()
-                if w.objectName() != "":
-                    for i in range(mo.propertyCount()):
-                        name = mo.property(i).name()
-                        val = settings.value(
-                            "{}/{}".format(w.objectName(), name),
-                             w.property(name))
-                        w.setProperty(name, val)
-        else:
-            logging.info("GUI: failed to restore " + filename)
+        with open(filename, 'rb') as f:
+            self.simulator, instruction_contents = pickle.load(f)
 
+        # Restore the instruction table
+        self.ui.instructionTable.setRowCount(len(instruction_contents))
+        if len(instruction_contents) > 0:
+            for i in range(len(instruction_contents)):
+                for j in range(len(instruction_contents[0])):
+                    cell_contents = instruction_contents[i][j]
+                    if cell_contents is not None:
+                        self.ui.instructionTable.setItem(i, j, QtWidgets.QTableWidgetItem(cell_contents))
+
+        self.update_data()
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
