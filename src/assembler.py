@@ -98,6 +98,14 @@ def assemble_instruction(text_instruction):
             shift = 0
             funct = function_codes.get(mnemonic, 0)
 
+        # Special format for mfhi/mflo
+        elif mnemonic in ["mfhi", "mflo"]:
+            s = 0
+            t = 0
+            d = parse_register(split_instruction[1])
+            shift = 0
+            funct = function_codes.get(mnemonic)
+
         # All others follow the same format
         else:
             s = parse_register(split_instruction[2])

@@ -11,7 +11,8 @@ Assembler Utils
 # Instruction Types
 r_type = set(['add', 'sub', 'mult', 'div', 'and', 'or', 'xor', 'nor', 'jalr',
               'jr', 'slt', 'sll', 'srl', 'sra', 'add.s', 'sub.s', 'mul.s',
-              'div.s', 'cvt.w.s', 'cvt.s.w', 'c.eq.s', 'c.lt.s', 'c.le.s'])
+              'div.s', 'cvt.w.s', 'cvt.s.w', 'c.eq.s', 'c.lt.s', 'c.le.s',
+              'mfhi', 'mflo'])
 i_type = set(['addi', 'andi', 'ori', 'xori', 'beq', 'bne', 'bgez', 'blez',
               'bgtz', 'bltz', 'slti', 'lw', 'lb', 'sw', 'sb', 'l.s', 's.s',
               'bc1t', 'bc1f'])
@@ -63,6 +64,8 @@ opcodes = {
     "c.lt.s": 0b010001,
     "bc1t": 0b010001,
     "bc1f": 0b010001,
+    "mfhi": 0b000000,
+    "mflo": 0b000000
 }
 
 function_codes = {
@@ -88,6 +91,8 @@ function_codes = {
     'c.eq.s': 0b110010,
     'c.le.s': 0b111110,
     'c.lt.s': 0b111100,
+    'mfhi': 0b010000,
+    'mflo': 0b010010
 }
 
 register_names = {
