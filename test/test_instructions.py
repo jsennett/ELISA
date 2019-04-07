@@ -32,3 +32,26 @@ def test_beq_true_instruction():
         print(tester.PC)
         tester.step()
     assert(tester.PC == 4 * 0xFF + 4)
+
+def test_beq_false_instruction():
+    tester = SingleInstructionSimulator("beq $r1 $r2 0xFF")
+    for _ in range(4):
+        print(tester.PC)
+        tester.step()
+    assert(tester.PC == 16)
+
+def test_bne_true_instruction():
+    tester = SingleInstructionSimulator("bne $r1 $r2 0xFF")
+    for _ in range(4):
+        print(tester.PC)
+        tester.step()
+    assert(tester.PC == 4 * 0xFF + 4)
+
+def test_bne_false_instruction():
+    tester = SingleInstructionSimulator("bne $r1 $r1 0xFF")
+    for _ in range(4):
+        print(tester.PC)
+        tester.step()
+    assert(tester.PC == 16)
+
+

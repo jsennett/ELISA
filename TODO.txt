@@ -57,7 +57,7 @@ Instructions
 [ ]    XOR
 [ ]    XORI
 [ ]    NOR
-[-]    BEQ
+[X]    BEQ
 [-]    BNE
 [ ]    BGEZ
 [ ]    BLEZ
