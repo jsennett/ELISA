@@ -10,6 +10,9 @@ def test_IF():
     # Create a simulator
     sim = Simulator()
 
+    # Test for pipelineing being off
+    sim.enable_pipeline = False
+
      # Set Memory
     DRAM = Memory(lines=2**12, delay=10)
     L2 = Cache(lines=32, words_per_line=4, delay=1, associativity=1, next_level=DRAM, name="L2")
