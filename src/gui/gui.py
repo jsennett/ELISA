@@ -47,7 +47,7 @@ Next steps:
     split display format into two options for data display and address/tag/idx display
 
 """
-from PyQt5.QtCore import QFileInfo, QSettings, QCoreApplication
+from PyQt5.QtCore import QCoreApplication
 from PyQt5 import QtWidgets, QtGui
 from mainwindow import Ui_mainwindow
 from simulator import Simulator
@@ -65,9 +65,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(ApplicationWindow, self).__init__()
 
-        # TODO: Fix settings to properly save/restore a program
-        settings = QSettings("gui.ini", QSettings.IniFormat)
-
         # Set up UI
         self.ui = Ui_mainwindow()
         self.ui.setupUi(self)
@@ -80,18 +77,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Connect a simulator
         self.simulator = Simulator()
 
-        # TODO: Add a status box with helpful messages (eg configuration loaded, step executed).
-
         # Update data tables, pulling info from simulator
         self.update_data()
 
         # Add button functionality
-        #     TODO:
-        # step until breakpoint
-        # step until completion
-        # export program
-        # restore program
-
         self.ui.setConfigurationButton.clicked.connect(self.configure_cache)
         self.ui.stepButton.clicked.connect(self.step)
         self.ui.stepNCyclesButton.clicked.connect(self.step_n)
@@ -400,7 +389,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
             # Convert assembly into machine code
             numerical_instructions = assembler.assemble_to_numerical(code)
-        except Exception as e:
+        except:
             self.error_dialog.showMessage("Unable to assemble instructions." +
                                           "\nPleases check your syntax.")
             return
@@ -479,10 +468,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.programCounter.setText(self.display(self.simulator.PC))
 
         # Determine table dimensions
-        register_rows, register_columns = 32, 2
-
-        # 0-indexed vertical header for registers $R0-$R32, $F0-$F32
-        self.ui.registerTable.setVerticalHeaderLabels([str(n) for n in range(32)])
+        register_rows, register_columns = 32 + 1, 2
 
         memory_rows, memory_columns = self.simulator.memory_heirarchy[-1].lines, 2
         if len(self.simulator.memory_heirarchy) == 1:
@@ -518,10 +504,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Update table contents
         # Register table
         for idx in range(32):
-            # TODO: see if there is a more efficient way than replacing cell by cell
-            # TODO: use display format to adjust string representation. Use instead of str()
+            # Set R0-R31 and F0-F31
             self.ui.registerTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.R[idx])))
             self.ui.registerTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.F[idx])))
+
+        # Set LO / HI
+        self.ui.registerTable.setItem(32, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.LO)))
+        self.ui.registerTable.setItem(32, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.HI)))
+
+        # 0-indexed vertical header for registers $R0-$R32, $F0-$F32
+        self.ui.registerTable.setVerticalHeaderLabels([str(n) for n in range(32)]
+                                                      + ["L/H"])
 
         # Memory table
         for idx, value in enumerate(self.simulator.memory_heirarchy[-1].data):
@@ -632,7 +625,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         instruction_rows = self.ui.instructionTable.rowCount()
         instruction_cols = self.ui.instructionTable.columnCount()
         instruction_contents = [ [None] * instruction_cols
-                                for _ in range(instruction_rows)]
+                                for row in range(instruction_rows)]
         for i in range(instruction_rows):
             for j in range(instruction_cols):
                 cell =  self.ui.instructionTable.item(i, j)

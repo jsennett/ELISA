@@ -15,11 +15,12 @@ GUI
 Pipeline
 
 [X]   pipeline/no-pipeline mode
+[X]   implement integer operations
+[X]   implement syscall to exit
+[ ]   implement floating point operations
 [ ]   Handle multiple stage ALU operations
-[ ]   implement other operations
-[-]   implement syscall to exit
-[ ]   test correctness
-[ ]   Condition code registers after every ALU
+[-]   test correctness
+[-]   Condition code registers after every ALU
 
 Benchmarks
 
@@ -44,35 +45,35 @@ Assembler
 Instructions
       Arithmetic
 [X]    ADD
-[ ]    ADDI
+[X]    ADDI
 [X]    SUB
-[ ]    SLL
-[ ]    SRL
-[/]    MULT
-[/]    DIV
-[ ]    AND
-[ ]    ANDI
-[ ]    OR
-[ ]    ORI
-[ ]    XOR
-[ ]    XORI
-[ ]    NOR
+[X]    SLL
+[X]    SRL
+[X]    MULT
+[X]    DIV
+[X]    AND
+[X]    ANDI
+[X]    OR
+[X]    ORI
+[X]    XOR
+[X]    XORI
+[X]    NOR
 [X]    BEQ
-[-]    BNE
-[ ]    BGEZ
-[ ]    BLEZ
-[ ]    BGZ
-[ ]    BLZ
-[-]    J
-[-]    JAL
-[ ]    JR
-[ ]    JALR
-[ ]    SLT
-[ ]    SLTI
-[ ]    LB
-[-]    LW
-[ ]    SB
-[-]    SW
+[X]    BNE
+[X]    BGEZ
+[X]    BLEZ
+[X]    BGZ
+[X]    BLZ
+[X]    J
+[X]    JAL
+[X]    JR
+[X]    JALR
+[X]    SLT
+[X]    SLTI
+[X]    LB
+[X]    LW
+[X]    SB
+[X]    SW
 [ ]    ADD.S
 [ ]    SUB.S
 [ ]    MUL.S

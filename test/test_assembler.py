@@ -8,6 +8,7 @@ def test_integer_file_instruction_parsing():
     with open('test/integer_instructions.asm') as f:
         file_contents = f.read()
 
+    # TODO: Fix lw/sw/lb/sb; offset is decimal, not hex
     expected = [
         "add $r1 $r2 $r3",
         "addi $r4 $r8 0x123",
