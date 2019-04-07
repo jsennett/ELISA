@@ -276,7 +276,7 @@ class Simulator:
                     # However, we must add lo and hi registers to dependency
                     # if instruction requiring their use is called
                     if funct in [0b011000, 0b011010]:
-                        self.R_dependences.add(32) # represents both lo and hi
+                        self.R_dependences.add(64) # represents both lo and hi
                     if d != 0:
                         self.R_dependences.add(d)
 
@@ -295,6 +295,38 @@ class Simulator:
 
             # Add dependency on regiester 31 for JAl instruction
             self.R_dependences.add(31)
+        
+        # If floating point instruction (potentially does not include control flow and l.s, s.s)
+        # may need to remove the (current_instruction & 0x3E00000) >> 21 for more instructions
+        elif opcode == 0b010001 and (current_instruction & 0x3E00000) >> 21 == 0b010000:
+            special = (current_instruction & 0x03E00000) >> 21
+            s = (current_instruction & 0x001F0000) >> 16
+            t = (current_instruction & 0x0000F800) >> 11
+            d = (current_instruction & 0x000007C0) >> 6
+            funct = (current_instruction & 0x3F)
+            
+            
+            
+            
+            # If data dependency then stall - pass a noop and don't call IF
+            if s in self.F_dependences or t in self.F_dependences:
+
+                self.status = "ID data dependency; " + self.status
+                self.buffer[1] = self.ID_NOOP.copy()
+                return
+
+            else:
+                
+                # add 32 to the register # d in order to let WB stage know  
+                # that it needs to write to the floating point regiesters
+                decode_results = [opcode, self.F[s], self.F[t], d+32, special, funct, PC]
+                
+                self.status = "ID FP Instruction; " + self.status
+
+                # Update dependency table for floating point registers
+                self.F_dependences.add(d)
+            
+        
         # If i-type: [opcode, s, t, immediate]
         else:
             s = (current_instruction & 0x03E00000) >> 21
@@ -448,11 +480,11 @@ class Simulator:
                     # mulitply
                     if funct == 0b011000:
                         value = s*t
-                        execute_results = [opcode, funct, 32, [value >> 32, value & 0xFFFFFFFF]]
+                        execute_results = [opcode, funct, 64, [value >> 32, value & 0xFFFFFFFF]]
                         self.status = "EX mult; " + self.status
                     # divide
                     elif funct == 0b011010:
-                        execute_results = [opcode, funct, 32, [s%t, s//t]]
+                        execute_results = [opcode, funct, 64, [s%t, s//t]]
                         self.status = "EX div; " + self.status
 
                     self.EX_multiple_cycle_instruction = False
@@ -512,7 +544,25 @@ class Simulator:
             # TODO: Confirm PC is correct
             execute_results = [opcode, target, PC]
 
-
+        # If floating point instructions (potentially does not include control flow and l.s, s.s)
+        # can be addressed in the ID stage
+        elif current_instruction[0] == 0b010001:
+            opcode, s, t, d, special, funct, PC = current_instruction
+            
+            # add.s
+            if funct == 0b000000:
+                pass
+            
+            # sub.s
+            elif funct == 0b000001:    
+                pass
+            
+            # mul.s, div.s
+            elif funct in [0b000010, 0b000011]:
+                pass
+            
+            #
+            
         # If I-Type
         else:
             opcode, s, t, immediate, PC = current_instruction
@@ -761,8 +811,8 @@ class Simulator:
         if reg == 0:
             self.status = "WB noop; "
 
-        # if reg parameter is set to 32 indicating we need to set hi and lo reg
-        elif reg == 32:
+        # if reg parameter is set to 64 indicating we need to set hi and lo reg
+        elif reg == 64:
             # Write the value to the register
             self.hi = value[0]
             self.lo = value[1]
