@@ -10,17 +10,16 @@ GUI
 [X]   Use pipeline-enabled button to set attribute in simulator
 [X]   Get rid of LRU/Write Policy buttons.
 [X]   Force users to use valid cache sizes (2^X)
-	[ ]   split display format into two options for data display and address/tag/idx display
 
 Pipeline
 
 [X]   pipeline/no-pipeline mode
 [X]   implement integer operations
 [X]   implement syscall to exit
+[X]   test correctness
+[X]   Handle multiple stage ALU operations
+[ ]   Condition code registers after every ALU
 [ ]   implement floating point operations
-[ ]   Handle multiple stage ALU operations
-[-]   test correctness
-[-]   Condition code registers after every ALU
 
 Benchmarks
 
@@ -36,10 +35,10 @@ Assembler
 [X]    Allow labels to refer to variables in .data
 [X]    Change register names to match MIPS naming ($v0, $t0, etc.)
 [X]    support syscall command
+[X]    Code validation, helpful error messsages
 [-]    Documentation
   Optional
 [ ]    Validate keywords (eg labels can be instruction names, registers 0-31)
-[ ]    Code validation, helpful error messsages
 
 
 Instructions
@@ -74,6 +73,7 @@ Instructions
 [X]    LW
 [X]    SB
 [X]    SW
+[X]    SYSCALL
 [ ]    ADD.S
 [ ]    SUB.S
 [ ]    MUL.S
@@ -87,11 +87,3 @@ Instructions
 [ ]    BC1F
 [ ]    L.S
 [ ]    S.S
-[-]    SYSCALL
-  key:
- [X]   coded and tested
- [-]   coded not tested
- [/]   partially coded
- [ ]   not started
-
-    
