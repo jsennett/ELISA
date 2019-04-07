@@ -367,15 +367,34 @@ class Simulator:
             opcode, s, t, d, shift, funct, PC = current_instruction
 
             # If Add
-            if funct == 0x20:
+            if funct == 0b100000:
                 execute_results = [opcode, funct, d, s+t]
                 self.status = "EX add; " + self.status
 
             # If Sub
-            elif funct == 0x22:
+            elif funct == 0b100010:
                 execute_results = [opcode, funct, d, s-t]
                 self.status = "EX sub; " + self.status
-
+            
+            # If bitwise and
+            elif funct == 0b100100:
+                execute_results = [opcode, funct, d, s&t]
+                self.status = "EX and; " + self.status
+            
+            # If bitwise or
+            elif funct == 0b100101:
+                execute_results = [opcode, funct, d, s|t]
+                self.status = "EX or; " + self.status
+                
+            # If bitwise nor
+            elif funct == 0b100111:
+                execute_results = [opcode, funct, d, (~s)&(~t)]
+                self.status = "EX nor; " + self.status
+                
+            # If xor
+            elif funct == 0b100110:
+                execute_results = [opcode, funct, d, s^t]
+                self.status = "EX xor; " + self.status
 
             # TODO: if multiple cycle ALU op, stall for one cycle.
             # If multi-cycle ALU op, add attributes for:
