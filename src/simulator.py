@@ -94,9 +94,9 @@ class Simulator:
         # Registers
         self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
         self.F = [0] * 32
-
-        # TODO: Set PC to where the first instruction is.
         self.PC = 0
+        self.hi = 0
+        self.lo = 0
 
         # Cycle count
         self.cycle = 0
@@ -157,7 +157,7 @@ class Simulator:
         if self.pipeline_enabled or self.instruction_stage == 0:
 
             # Get instruction from memory
-            instruction = self.memory_heirarchy[0].read(self.PC//4) # TODO: read from address rather than line number
+            instruction = self.memory_heirarchy[0].read(self.PC) # TODO: read from address rather than line number
 
             # If stalled on instruction fetch from memory
             if instruction == "wait":
@@ -426,7 +426,24 @@ class Simulator:
             # If sll; note that this also includes noops
             elif funct == 0:
                 execute_results = [opcode, funct, d, t << shift]
-                self.status = "EX sll; " + self.status
+                if d == 0 and t == 0 and shift == 0:
+                    self.status = "EX noop; " + self.status
+                else:
+                    self.status = "EX sll; " + self.status
+
+            # If srl
+            elif funct == 0b000010:
+                execute_results = [opcode, funct, d, t >> shift]
+                self.status = "EX srl; " + self.status
+
+            # If sra
+            elif funct == 0b000011:
+                sign = (t & 0x8000) >> 15
+                val = t >> shift
+                for i in range(shift):
+                    val |= (sign << (15 - i))
+                execute_results = [opcode, funct, d, val]
+                self.status = "EX sra; " + self.status
 
             # TODO: Implement remaining r-type instructions
             else:
@@ -546,43 +563,49 @@ class Simulator:
         if current_instruction[0] in [0b101011, 0b101000, 0b100011, 0b100000]:
             opcode, t, s = current_instruction
 
-            # If sw ("sw $rt offset(base)")
-            if opcode == 0b101011:
+            # If sw or sb ("sw $rt offset(base)")
+            if opcode in [0b101011, 0b101000]:
+
+                # word or byte?
+                only_byte = True if opcode == 0b101000 else False
+                mnemonic = "sb" if opcode == 0b101000 else "sw"
 
                 # Write to memory
-                response = self.memory_heirarchy[0].write(memory_address=s//4, value=t)
+                response = self.memory_heirarchy[0].write(memory_address=s, value=t, only_byte=only_byte)
                 if response == "wait":
                     # insert noop, don't call EX() since MEM is stalled
                     self.buffer[3] = self.MEM_NOOP
-                    self.status = "MEM wait to store; " + self.status
+                    self.status = "MEM wait to {}; ".format(mnemonic) + self.status
                     return
                 else:
                     self.buffer[3] = self.MEM_NOOP
-                    self.status = "MEM store successful; " + self.status
+                    self.status = "MEM {} successful; ".format(mnemonic) + self.status
                     self.EX()
                     return
 
-            # If lw ("lw $rt offset(base)")
-            elif opcode == 0b100011:
+            # If lw or lb ("lw $rt offset(base)")
+            elif opcode in [0b100011, 0b100000]:
+
+                # word or byte?
+                only_byte = True if opcode == 0b100000 else False
+                mnemonic = "lb" if opcode == 0b100000 else "lw"
 
                 # Write to memory
-                response = self.memory_heirarchy[0].read(memory_address=s//4)
+                response = self.memory_heirarchy[0].read(memory_address=s, only_byte=only_byte)
                 if response == "wait":
                     # insert noop, don't call EX() since MEM is stalled
                     self.buffer[3] = self.MEM_NOOP.copy()
-                    self.status = "MEM wait to load; " + self.status
+                    self.status = "MEM wait to {}; ".format(mnemonic) + self.status
                     return
                 else:
                     # pass results to WB
                     self.buffer[3] = [t, response[0]]
-                    self.status = "MEM loaded {} for $r{}; ".format(response[0], t) + self.status
+                    self.status = "MEM {} successful; ".format(mnemonic) + self.status
                     self.EX()
                     return
 
-            elif opcode in [0b101000, 0b100000]:
-                # TODO: Code lb, wb
-                raise ValueError("LB and WB operations not coded yet")
-
+            else:
+                raise ValueError("Opcode {} not coded yet".format(opcode))
         # If bne, beq (condition known to be taken; otherwise, replaced by noop)
         elif current_instruction[0] in [0b000101, 0b000100]:
             opcode, t = current_instruction
