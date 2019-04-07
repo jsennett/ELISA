@@ -94,7 +94,10 @@ class Simulator:
         # Registers
         self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
         self.F = [0] * 32
-
+        self.lo = 0
+        self.hi = 0
+        
+        
         # TODO: Set PC to where the first instruction is.
         self.PC = 0
 
@@ -232,40 +235,69 @@ class Simulator:
 
         # if r: [opcode, s, t, d, shift, funct]
         if opcode == 0:
-
+            
             s = (current_instruction & 0x03E00000) >> 21
             t = (current_instruction & 0x001F0000) >> 16
             d = (current_instruction & 0x0000F800) >> 11
             shift = (current_instruction & 0x000007C0) >> 6
             funct = (current_instruction & 0x3F)
-
-            # If data dependency then stall - pass a noop and don't call IF
-            # r0 cannot be changed, so it should not cause a stall
-            if s in self.R_dependences or t in self.R_dependences:
-                self.status = "ID data dependency; " + self.status
-                self.buffer[1] = self.ID_NOOP.copy()
-                return
-
-            else:
-                # TODO: use self.F instead of self.R for floating point operations
-                decode_results = [opcode, self.R[s], self.R[t], d, shift, funct, PC]
-                if current_instruction == 0:
-                    self.status = "ID NOOP; " + self.status
+            
+            # Handle jr and jalr first which are only dependent on register s
+            if funct in [0b001000, 0b001001]:
+                if (s in self.R_dependences):
+                    self.status = "ID data dependency; " + self.status
+                    self.buffer[1] = self.ID_NOOP.copy()
+                    return
                 else:
-                    self.status = "ID R-type decoded; " + self.status
+                    target = self.R[s]
+                    decode_results = [opcode, target, self.R[t], d, shift, funct, PC]
+                    self.status = "ID J-type decoded; " + self.status
+                    
+                    # add dependency for jalr
+                    if funct == 0b001001:
+                        self.R_dependences.add(d)
+            
+            else:
+                # If data dependency then stall - pass a noop and don't call IF
+                # r0 cannot be changed, so it should not cause a stall
+                if s in self.R_dependences or t in self.R_dependences:
+                    
+                    self.status = "ID data dependency; " + self.status
+                    self.buffer[1] = self.ID_NOOP.copy()
+                    return
+    
+                else:
+                    # TODO: use self.F instead of self.R for floating point operations
+                    decode_results = [opcode, self.R[s], self.R[t], d, shift, funct, PC]
+                    if current_instruction == 0:
+                        self.status = "ID NOOP; " + self.status
+                    else:
+                        self.status = "ID R-type decoded; " + self.status
+    
+                    # Update dependency table. Note that a destination of r0
+                    # does not cause a dependency since it has a fixed value zero
+                    # However, we must add lo and hi registers to dependency
+                    # if instruction requiring their use is called
+                    if funct in [0b011000, 0b011010]:
+                        self.R_dependences.add(32) # represents both lo and hi
+                    if d != 0:
+                        self.R_dependences.add(d)
 
-                # Update dependency table. Note that a destination of r0
-                # does not cause a dependency since it has a fixed value zero
-                if d != 0:
-                    self.R_dependences.add(d)
-
-        # If j-type: [opcode, target]
-        elif opcode in [2, 3]:
+        # If j-type - instruction: j: [opcode, target]
+        elif opcode == 0b000010: 
+            target = current_instruction & 0x03FFFFFF
+            decode_results = self.ID_NOOP
+            self.status = "ID J-type decoded; " + self.status
+            # TODO: Think whether we should be updating the PC here for a jump operation
+        
+        # If j-type - instructionL jal:[opcode, target]
+        elif opcode == 0b000011:
             target = current_instruction & 0x03FFFFFF
             decode_results = [opcode, target, PC]
             self.status = "ID J-type decoded; " + self.status
-            # TODO: Think whether we should be updating the PC here for a jump operation
-
+            
+            # Add dependency on regiester 31 for JAl instruction
+            self.R_dependences.add(31)
         # If i-type: [opcode, s, t, immediate]
         else:
             s = (current_instruction & 0x03E00000) >> 21
@@ -278,6 +310,7 @@ class Simulator:
 
             # If t is a source, use value self.R[t]
             # This includes: beq, bne, sw, sb
+
             # TODO: As we add more instructions, we need to expand these lists.
             if opcode in [0b000100, 0b000101, 0b101011, 0b101000]:
 
@@ -291,10 +324,9 @@ class Simulator:
                     decode_results = [opcode, self.R[s], self.R[t], immediate, PC]
 
             # If t is a destination, use value t
-            # This includes: addi, andi, ori, xori, bgez, blez, bgtz, bltz, slti, lw, lb,
+            # This includes: addi, andi, ori, xori, slti, lw, lb, bgez, blez, bgtz, bltz
             # TODO: As we add more instructions, we need to expand these lists.
             else:
-
                 # If data dependency then stall - pass a noop
                 if s in self.R_dependences:
                     self.status = "ID data dependency; " + self.status
@@ -303,21 +335,30 @@ class Simulator:
                 else:
                     self.status = "ID I-type decoded; " + self.status
                     decode_results = [opcode, self.R[s], t, immediate, PC]
-                    self.R_dependences.add(t)
+                    
+                    if opcode not in [0b000001, 0b000110, 0b000111, 0b000001]:
+                        self.R_dependences.add(t)
 
         # Update the buffer
         self.buffer[1] = decode_results
 
-        # TODO: Shift this logic into the J-Type section above
-        # if j or jal
+        # TODO: Shift this logic into the J-Type section above ** may not want 
+        # to do that since jr and jalr are not j type
+        # if j, jal, jr, or jalr
         if opcode in [0x2, 0x3]:
-
             # Insert a noop in the previous buffer
             self.buffer[0] = [0, PC]
-
             # Change the PC based on the jump address
             self.PC = (PC & 0xF0000000) | (target << 2)
-
+        if (opcode == 0 and (current_instruction & 0x3F) in [0b001000, 0b001001]):
+            # Insert a noop in the previous buffer
+            self.buffer[0] = [0, PC]
+            # Change the PC based on the jump address
+            self.PC = target
+            
+            
+            print('JUMP TO REGISTER TAKEN')
+            
         # Either way, call the IF stage.
         self.IF()
 
@@ -349,7 +390,7 @@ class Simulator:
         logging.info("EX()")
 
         # If syscall:
-        if self.buffer[1][0] == 0b001100:
+        if self.buffer[1][0] == 0b001100 and len(self.buffer) == 2:
             self.buffer[2] = self.buffer[1].copy()
             self.status = "EX syscall; " + self.status
             self.ID()
@@ -383,13 +424,23 @@ class Simulator:
 
             # If bitwise nor
             elif funct == 0b100111:
-                execute_results = [opcode, funct, d, (~s)&(~t)]
+                execute_results = [opcode, funct, d, ((~s)&(~t))]
                 self.status = "EX nor; " + self.status
 
             # If xor
             elif funct == 0b100110:
                 execute_results = [opcode, funct, d, s^t]
                 self.status = "EX xor; " + self.status
+            
+            # If slt
+            elif funct == 0b101010:
+                if s < t:
+                    execute_results = [opcode, funct, d, 1]
+                else:
+                    execute_results = self.EX_NOOP.copy()
+                    
+                self.status = "EX slt; " + self.status
+            
 
             # TODO: if multiple cycle ALU op, stall for one cycle.
             # If multi-cycle ALU op, add attributes for:
@@ -401,11 +452,12 @@ class Simulator:
                 if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
                     # mulitply
                     if funct == 0b011000:
-                        execute_results = [opcode, funct, d, s*t]
+                        value = s*t
+                        execute_results = [opcode, funct, 32, [value >> 32, value & 0xFFFFFFFF]]
                         self.status = "EX mult; " + self.status
                     # divide
                     elif funct == 0b011010:
-                        execute_results = [opcode, funct, d, s/t]
+                        execute_results = [opcode, funct, 32, [s%t, s//t]]
                         self.status = "EX div; " + self.status
 
                     self.EX_multiple_cycle_instruction = False
@@ -423,6 +475,14 @@ class Simulator:
                     self.status = "EX stall; " + self.status
                     return
 
+            # if jr which is also R-type pass a noop as nothing is left to do
+            elif funct == 0b001000:
+                execute_results = self.EX_NOOP.copy()
+           
+            # if jalr which is also R-type
+            elif funct == 0b001001:
+                execute_results = [opcode, funct, d, PC]
+            
             # If sll; note that this also includes noops
             elif funct == 0:
                 execute_results = [opcode, funct, d, t << shift]
@@ -433,22 +493,13 @@ class Simulator:
                 raise ValueError('Unknown funct {:05b} for R-Type with \
                                  opcode: {:06b}'.format(funct, opcode))
 
-        # If J-Type
-        elif current_instruction[0] in [0x2, 0x3]:
+        # If J-Type (only JAL)
+        elif current_instruction[0] == 0b000011:
             opcode, target, PC = current_instruction
 
             # TODO: Confirm PC is correct
-            # If JAL
-            if opcode == 0x3:
-                execute_results = [opcode, target, PC]
+            execute_results = [opcode, target, PC]
 
-            # If J
-            elif opcode == 0x2:
-                execute_results = [opcode, target]
-
-            # TODO: Implement remaining j-type instructions
-            else:
-                raise ValueError('Unknown J-Type opcode {:06b}'.format(opcode))
 
         # If I-Type
         else:
@@ -467,25 +518,94 @@ class Simulator:
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX beq, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
-                # and WB stage) *need to let software know that instruction is
-                # completed - pass 0x1 - for disabled pipeline
+                # and WB stage) 
                 else:
                     self.status = "EX beq, not taken; " + self.status
 
                     execute_results = self.EX_NOOP.copy()
-
+            # BNE
             elif opcode == 0b000101:
                 # If branch is taken
                 if s != t:
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bne taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
-                # and WB stage) *need to let software know that instruction is
-                # completed - pass 0x1 - for disabled pipeline
+                # and WB stage) 
                 else:
                     execute_results = self.EX_NOOP.copy()
                     self.status = "EX bne, not taken; " + self.status
-
+            # BGEZ
+            elif opcode == 0b000001 and t == 1:
+                # If branch is taken
+                if s >= 0:
+                    execute_results = [opcode, PC - 4 + (immediate << 2)]
+                    self.status = "EX bgez, taken; " + self.status
+                # If branch is not taken push a noop (nothing occurs during MEM
+                # and WB stage)
+                else:
+                    self.status = "EX bgez, not taken; " + self.status
+                    execute_results = self.EX_NOOP.copy()
+            # BLEZ
+            elif opcode == 0b000110:
+                # If branch is taken
+                if s <= 0:
+                    execute_results = [opcode, PC - 4 + (immediate << 2)]
+                    self.status = "EX blez, taken; " + self.status
+                # If branch is not taken push a noop (nothing occurs during MEM
+                # and WB stage)
+                else:
+                    self.status = "EX blez, not taken; " + self.status
+                    execute_results = self.EX_NOOP.copy()
+            # BGTZ
+            elif opcode == 0b000111:
+                # If branch is taken
+                if s > 0:
+                    execute_results = [opcode, PC - 4 + (immediate << 2)]
+                    self.status = "EX bgtz, taken; " + self.status
+                # If branch is not taken push a noop (nothing occurs during MEM
+                # and WB stage)
+                else:
+                    self.status = "EX bgtz, not taken; " + self.status
+                    execute_results = self.EX_NOOP.copy()
+            # BLTZ
+            elif opcode == 0b000001 and t == 0:
+                # If branch is taken
+                if s < 0:
+                    execute_results = [opcode, PC - 4 + (immediate << 2)]
+                    self.status = "EX bltz, taken; " + self.status
+                # If branch is not taken push a noop (nothing occurs during MEM
+                # and WB stage)
+                else:
+                    self.status = "EX bltz, not taken; " + self.status
+                    execute_results = self.EX_NOOP.copy()
+            # addi
+            elif opcode == 0b001000:
+                execute_results = [opcode, 0, t, s + immediate]
+                self.status = "EX andi; " + self.status
+               
+            # If slti
+            elif opcode == 0b001010:
+                if s < immediate:
+                    execute_results = [opcode, 0, t, 1]
+                else:
+                    execute_results = self.EX_NOOP.copy()
+                self.status = "EX slti; " + self.status
+            
+            # andi
+            elif opcode == 0b001100:
+                execute_results = [opcode, 0, t, s & immediate]
+                self.status = "EX andi; " + self.status
+                
+            # ori
+            elif opcode == 0b001101:
+                execute_results = [opcode, 0, t, s | immediate]
+                self.status = "EX ori; " + self.status
+             
+            # xori
+            elif opcode == 0b001110:
+                execute_results = [opcode, 0, t, s ^ immediate]
+                self.status = "EX xori; " + self.status
+              
             # TODO: Implement remaining r-type instructions
             else:
                 raise ValueError("Unknown opcode for I-Type instruction: {}".format(opcode))
@@ -525,7 +645,7 @@ class Simulator:
         # and if it cannot, a stall is incurred
 
         # If syscall
-        if self.buffer[2][0] == 0b001100:
+        if self.buffer[2][0] == 0b001100 and len(self.buffer) == 2:
             self.buffer[3] = self.buffer[2].copy()
             self.status = "MEM syscall; " + self.status
             self.EX()
@@ -583,36 +703,37 @@ class Simulator:
                 # TODO: Code lb, wb
                 raise ValueError("LB and WB operations not coded yet")
 
-        # If bne, beq (condition known to be taken; otherwise, replaced by noop)
-        elif current_instruction[0] in [0b000101, 0b000100]:
+        # If bne, beq, bgez, blez, bgtz, bltz (condition known to be taken; 
+        # otherwise, replaced by noop)
+        elif current_instruction[0] in [0b000101, 0b000100, 0b000001, 
+                          0b000110, 0b000111, 0b000001]:
             opcode, t = current_instruction
 
             # Flush the pipeline when the branch is taken
             self.buffer = [self.IF_NOOP, self.ID_NOOP,
                            self.EX_NOOP, self.MEM_NOOP]
-
             self.PC = t
             self.status = "MEM branch taken to PC={}; ".format(hex(t)) + self.status
             self.EX()
             return
 
         # If jal
-        elif current_instruction[0] == 0b000011:
+        elif current_instruction[0] == 0b000011: #or (current_instruction[0] == 0 and (current_instruction[0] & 0x3F) == 0b001001):
             opcode, target, return_address = current_instruction
-
             # JAL stores $r31 = return address (PC + 4)
             self.buffer[3] = [31, return_address]
             self.EX()
             return
 
         # If j - do not need WB stage - pass a noop
-        elif current_instruction[0] == 0b000010:
+        elif current_instruction[0] == 0b000010: #or (current_instruction[0] == 0 and (current_instruction[0] & 0x3F) == 0b001000):
             self.buffer[3] = self.MEM_NOOP
             self.EX()
             return
 
         # TODO: Other instructions need to be caught;
         # this else shouldn't capture all other instruction types.
+        # does include jalr
         else:
             opcode, funct, reg, value = current_instruction
             self.buffer[3] = [reg, value]
@@ -634,12 +755,23 @@ class Simulator:
         # If noop or no writeback needed, don't write back anything
         if reg == 0:
             self.status = "WB noop; "
-
+        
+        # if reg parameter is set to 32 indicating we need to set hi and lo reg
+        elif reg == 32:
+            # Write the value to the register
+            self.hi = value[0]
+            self.lo = value[1]
+            
+            print('GOT INTO WB STAGE')
+            
+            # Clear reg dependency
+            self.R_dependences.remove(reg)
+            self.status = "WB {} to $r{}; ".format(value, 'hi, lo') + self.status
         else:
 
             # Write the value to the register
             self.R[reg] = value
-
+            
             # Clear reg dependency
             self.R_dependences.remove(reg)
             self.status = "WB {} to $r{}; ".format(value, reg) + self.status
