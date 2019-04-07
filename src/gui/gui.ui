@@ -360,11 +360,11 @@
      <x>10</x>
      <y>80</y>
      <width>501</width>
-     <height>751</height>
+     <height>771</height>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>2</number>
    </property>
    <widget class="QWidget" name="registerTab">
     <attribute name="title">
@@ -379,7 +379,7 @@
        <x>0</x>
        <y>0</y>
        <width>491</width>
-       <height>731</height>
+       <height>741</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -472,7 +472,7 @@
        <x>0</x>
        <y>0</y>
        <width>491</width>
-       <height>701</height>
+       <height>741</height>
       </rect>
      </property>
      <property name="minimumSize">
@@ -533,7 +533,7 @@
        <x>0</x>
        <y>0</y>
        <width>491</width>
-       <height>701</height>
+       <height>741</height>
       </rect>
      </property>
      <property name="font">
