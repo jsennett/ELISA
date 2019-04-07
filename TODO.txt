@@ -10,7 +10,7 @@ GUI
 [X]   Use pipeline-enabled button to set attribute in simulator
 [X]   Get rid of LRU/Write Policy buttons.
 [X]   Force users to use valid cache sizes (2^X)
-[ ]   split display format into two options for data display and address/tag/idx display
+	[ ]   split display format into two options for data display and address/tag/idx display
 
 Pipeline
 
@@ -43,13 +43,13 @@ Assembler
 
 Instructions
       Arithmetic
-[ ]    ADD
+[X]    ADD
 [ ]    ADDI
-[ ]    SUB
+[X]    SUB
 [ ]    SLL
 [ ]    SRL
-[ ]    MULT
-[ ]    DIV
+[/]    MULT
+[/]    DIV
 [ ]    AND
 [ ]    ANDI
 [ ]    OR
@@ -57,22 +57,22 @@ Instructions
 [ ]    XOR
 [ ]    XORI
 [ ]    NOR
-[ ]    BEQ
-[ ]    BNE
+[-]    BEQ
+[-]    BNE
 [ ]    BGEZ
 [ ]    BLEZ
 [ ]    BGZ
 [ ]    BLZ
-[ ]    J
-[ ]    JAL
+[-]    J
+[-]    JAL
 [ ]    JR
 [ ]    JALR
 [ ]    SLT
 [ ]    SLTI
 [ ]    LB
-[ ]    LW
+[-]    LW
 [ ]    SB
-[ ]    SW
+[-]    SW
 [ ]    ADD.S
 [ ]    SUB.S
 [ ]    MUL.S
@@ -86,5 +86,11 @@ Instructions
 [ ]    BC1F
 [ ]    L.S
 [ ]    S.S
-[ ]    SYSCALL
+[-]    SYSCALL
+  key:
+ [X]   coded and tested
+ [-]   coded not tested
+ [/]   partially coded
+ [ ]   not started
 
+    
