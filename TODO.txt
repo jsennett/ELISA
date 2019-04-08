@@ -1,5 +1,10 @@
 TODO:
 
+General
+
+[ ]   Fix representation of negative numbers we should store as 2s complement
+
+
 GUI
 
 [X]   implement breakpoints
@@ -43,28 +48,28 @@ Assembler
 
 Instructions
       Arithmetic
-[X]    ADD
-[X]    ADDI
-[X]    SUB
-[X]    SLL
-[X]    SRL
-[X]    MULT
-[X]    DIV
-[X]    AND
-[X]    ANDI
-[X]    OR
-[X]    ORI
-[X]    XOR
-[X]    XORI
-[X]    NOR
-[X]    BEQ
-[X]    BNE
-[X]    BGEZ
-[X]    BLEZ
-[X]    BGZ
-[X]    BLZ
-[X]    J
-[X]    JAL
+	[X]    ADD
+	[X]    ADDI
+	[X]    SUB
+	[X]    SLL
+	[X]    SRL
+	[X]    MULT
+	[X]    DIV
+	[X]    AND
+	[X]    ANDI
+	[X]    OR
+	[X]    ORI
+	[X]    XOR
+	[X]    XORI
+	[X]    NOR
+	[X]    BEQ
+	[X]    BNE
+	[X]    BGEZ
+	[X]    BLEZ
+	[X]    BGZ
+	[X]    BLZ
+	[X]    J
+	[X]    JAL
 [X]    JR
 [X]    JALR
 [X]    SLT
