@@ -11,7 +11,8 @@ class SingleInstructionSimulator(Simulator):
         super().__init__()
         DRAM = Memory(lines=2**8, delay=0)
         self.memory_heirarchy = [DRAM]
-        self.set_instructions(assemble_to_numerical(instruction))
+        instructions, data = assemble_to_numerical(instruction)
+        self.set_instructions(instructions)
         self.R = list(range(32))
 
 def test_and():
@@ -257,6 +258,15 @@ def test_sra_negative():
     input_val = 0b1011000000000000
     expected = 0b1111101100000000
     # r1 = r10 >> 4
+    tester = SingleInstructionSimulator("sra $r1 $r10 4")
+    tester.R[10] = input_val
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[1] == expected)
+
+def test_sra_negative():
+    input_val = -255
+    expected = -16
     tester = SingleInstructionSimulator("sra $r1 $r10 4")
     tester.R[10] = input_val
     for _ in range(5):

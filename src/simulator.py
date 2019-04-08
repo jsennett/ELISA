@@ -92,7 +92,7 @@ class Simulator:
         self.end_of_program = False
 
         # Registers
-        self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
+        self.R = [0] * 32
         self.F = [0] * 32
         self.PC = 0
         self.HI = 0
@@ -123,7 +123,7 @@ class Simulator:
         self.cycle += 1
 
         logging.info("Cycle {} - {}".format(self.cycle, self.status))
-        logging.info("Current buffer contents:", self.buffer)
+        logging.info("Current buffer contents:" + str(self.buffer))
 
     def IF(self):
         """Instruction Fetch stage
@@ -269,7 +269,6 @@ class Simulator:
                     val = self.HI if funct == 0b010000 else self.LO
                     decode_results = [opcode, val, 0, d, 0, funct, PC]
             # R: [opcode, s, t, d, shift, funct, PC]
-
             else:
                 # If data dependency then stall - pass a noop and don't call IF
                 # r0 cannot be changed, so it should not cause a stall
@@ -454,6 +453,7 @@ class Simulator:
             # If mflo or mfhi
             elif funct in [0b010010, 0b010000]:
                 execute_results = [opcode, funct, d, s]
+                self.status = "EX mfhi/lo val {} to {}; ".format(s, d) + self.status
 
             # For multi-cycle ALU operations, if there are cycles remaining,
             # decrement the count of cycles and insert a noop.
@@ -469,7 +469,7 @@ class Simulator:
                     # divide
                     elif funct == 0b011010:
                         execute_results = [opcode, funct, 64, [s%t, s//t]]
-                        self.status = "EX div; " + self.status
+                        self.status = "EX div {}/{}; ".format(s, t) + self.status
 
                     self.EX_multiple_cycle_instruction = False
 
@@ -616,7 +616,7 @@ class Simulator:
             # addi
             elif opcode == 0b001000:
                 execute_results = [opcode, 0, t, s + immediate]
-                self.status = "EX andi; " + self.status
+                self.status = "EX addi; " + self.status
 
             # If slti
             elif opcode == 0b001010:
@@ -678,7 +678,7 @@ class Simulator:
 
         # If syscall
         if self.buffer[2][0] == 0b001100 and len(self.buffer[2]) == 2:
-            self.buffer[3] = self.buffer[2].copy()
+            self.buffer[3] = -1   # We need a distinct syscall code to differentiate from a WB
             self.status = "MEM syscall; " + self.status
             self.EX()
             return
@@ -773,7 +773,7 @@ class Simulator:
         logging.info("WB()")
 
         # If syscall, note the end of program
-        if self.buffer[3][0] == 0b001100:
+        if self.buffer[3] == -1:
             self.status = "WB syscall; " + self.status
             self.end_of_program = True
             self.MEM()
@@ -808,7 +808,7 @@ class Simulator:
 
         self.MEM()
 
-    def set_instructions(self, instructions):
+    def set_instructions(self, instructions, data_section=None):
         logging.info("set_instructions()")
         """Set instructions in memory.
 
@@ -818,3 +818,7 @@ class Simulator:
         # TODO: allow setting at any point in memory, not just starting at 0x0
         """
         self.memory_heirarchy[-1].data[:len(instructions)] = instructions
+        if data_section is not None:
+            for idx in data_section:
+                self.memory_heirarchy[-1].data[idx] = data_section[idx]
+

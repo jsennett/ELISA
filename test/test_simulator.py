@@ -26,7 +26,7 @@ def test_IF():
     with open('test/IF_test.asm') as f:
         file_contents = f.read()
 
-    instructions = assemble_to_numerical(file_contents)
+    instructions, data = assemble_to_numerical(file_contents)
     sim.set_instructions(instructions)
 
     # Step a few times; it will take 10 + 1 + 1 steps to load the first instruction

@@ -38,7 +38,8 @@ def test_integer_file_instruction_parsing():
         "lw $r1 0x04($r3)",
         "sw $r1 0x04($r3)"
     ]
-    assert(assemble_to_text(file_contents) == expected)
+    instructions, data = assemble_to_text(file_contents)
+    assert(instructions == expected)
 
 
 def test_integer_file_instruction_assembly():
@@ -75,7 +76,8 @@ def test_integer_file_instruction_assembly():
         0b10001100011000010000000000000100,
         0b10101100011000010000000000000100
     ]
-    assert(assemble_to_numerical(file_contents) == expected)
+    instructions, data = assemble_to_numerical(file_contents)
+    assert(instructions == expected)
 
 def test_instructions_with_labels():
 
@@ -88,45 +90,8 @@ def test_instructions_with_labels():
                 "add $r1 $r2 $r3"]  # mem: 0x8
 
     # Test whether label maps to correct memeory address
-    assert(assemble_to_text(file_contents) == expected)
-
-def test_section_parsing():
-
-    asm_with_sections = """
-        .text
-    main:
-        addi $r1 $r2 x
-        addi $r1 $r2 y
-
-        .data
-    x: 	.word 0x7B
-    y:	.word 0x1C8
-    """
-
-    asm_without_sections = """
-        addi $r1 $r2 0x7B
-        addi $r1 $r2 0x1C8
-    """
-    assert(assemble_to_numerical(asm_with_sections) ==
-           assemble_to_numerical(asm_without_sections))
-
-def test_section_parsing_no_text_section():
-
-    asm_with_sections = """
-    addi $r1 $r2 x
-    addi $r1 $r2 y
-
-        .data
-    x: 	.word 0x7B
-    y:	.word 0x1C8
-    """
-
-    asm_without_sections = """
-        addi $r1 $r2 0x7B
-        addi $r1 $r2 0x1C8
-    """
-    assert(assemble_to_numerical(asm_with_sections) ==
-           assemble_to_numerical(asm_without_sections))
+    instructions, data = assemble_to_text(file_contents)
+    assert(instructions == expected)
 
 def test_add():
     assert(assemble_instruction("add $r1 $r2 $r3")

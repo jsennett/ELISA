@@ -96,7 +96,6 @@ function_codes = {
 }
 
 register_names = {
-
     '$zero': 0,
     '$at': 1,
     '$v0': 2,

@@ -321,6 +321,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 # Note: breakpoints are 1-indexed while cells are 0 indexed
                 # So, the breakpoint is instruction_num + 1
                 self.statusBar().showMessage("Stepped until breakpoint {}".format(instruction_num + 1))
+                bp_cell.setText('')
                 break
 
         self.update_data()
@@ -385,10 +386,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         try:
             # Parse text into assembly instructions
-            text_instructions = assembler.assemble_to_text(code)
+            text_instructions, data = assembler.assemble_to_text(code)
 
             # Convert assembly into machine code
-            numerical_instructions = assembler.assemble_to_numerical(code)
+            numerical_instructions, data = assembler.assemble_to_numerical(code)
+
+            logging.info(".data section values:" + str(data))
         except:
             self.error_dialog.showMessage("Unable to assemble instructions." +
                                           "\nPleases check your syntax.")
@@ -397,14 +400,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Reset before setting the new instructions
         self.simulator.reset()
-        self.simulator.set_instructions(numerical_instructions)
+        self.simulator.set_instructions(numerical_instructions, data)
 
         # Update the instructions table
         self.ui.instructionTable.setRowCount(len(text_instructions))
         for idx in range(len(text_instructions)):
             self.ui.instructionTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(hex(4 * idx)))
             self.ui.instructionTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(text_instructions[idx]))
-            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("{:08X}".format(numerical_instructions[idx])[2:]))
+            self.ui.instructionTable.setItem(idx, 2, QtWidgets.QTableWidgetItem("{:08X}".format(numerical_instructions[idx])))
 
         self.ui.tabs.setCurrentIndex(1)
         self.statusBar().showMessage("Instructions loaded.")
