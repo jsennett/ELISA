@@ -75,6 +75,7 @@ def test_cache_write_byte():
     cache.write(0x2, 0x2, only_byte=True)
     cache.write(0x3, 0x3, only_byte=True)
     assert(cache.data[0][1] == 0x03020100)
+    assert(mem.data[0] == 0x03020100)
 
 def test_memory():
 

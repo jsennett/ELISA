@@ -92,7 +92,7 @@ class Simulator:
         self.end_of_program = False
 
         # Registers
-        self.R = list(range(0, 32))  # Todo: replcae with self.R = [0] * 32
+        self.R = [0] * 32
         self.F = [0] * 32
         self.PC = 0
         self.HI = 0
@@ -123,7 +123,7 @@ class Simulator:
         self.cycle += 1
 
         logging.info("Cycle {} - {}".format(self.cycle, self.status))
-        logging.info("Current buffer contents:", self.buffer)
+        logging.info("Current buffer contents:" + str(self.buffer))
 
     def IF(self):
         """Instruction Fetch stage
@@ -254,6 +254,21 @@ class Simulator:
                     if funct == 0b001001:
                         self.R_dependences.add(d)
 
+            # Handle mflo / mfhi dependences
+            elif funct in [0b010010, 0b010000]:
+
+                # Add destination d to the destination table
+                self.R_dependences.add(d)
+
+                # Check if sources hi/lo are in the destination table
+                if 64 in self.R_dependences:
+                    self.status = "ID data dependency; " + self.status
+                    self.buffer[1] = self.ID_NOOP.copy()
+                    return
+                else:
+                    val = self.HI if funct == 0b010000 else self.LO
+                    decode_results = [opcode, val, 0, d, 0, funct, PC]
+            # R: [opcode, s, t, d, shift, funct, PC]
             else:
                 # If data dependency then stall - pass a noop and don't call IF
                 # r0 cannot be changed, so it should not cause a stall
@@ -273,21 +288,22 @@ class Simulator:
 
                     # Update dependency table. Note that a destination of r0
                     # does not cause a dependency since it has a fixed value zero
-                    # However, we must add lo and hi registers to dependency
-                    # if instruction requiring their use is called
-                    if funct in [0b011000, 0b011010]:
-                        self.R_dependences.add(64) # represents both lo and hi
+
                     if d != 0:
                         self.R_dependences.add(d)
 
-        # If j-type - instruction: j: [opcode, target]
+                    # Also, we must add lo and hi registers to dependency
+                    # if instruction requiring their use is called
+                    if funct in [0b011000, 0b011010]:
+                        self.R_dependences.add(64) # represents both lo and hi
+
+        # If j-type - instruction j
         elif opcode == 0b000010:
             target = current_instruction & 0x03FFFFFF
             decode_results = self.ID_NOOP
             self.status = "ID J-type decoded; " + self.status
-            # TODO: Think whether we should be updating the PC here for a jump operation
 
-        # If j-type - instructionL jal:[opcode, target]
+        # If j-type - instruction jal
         elif opcode == 0b000011:
             target = current_instruction & 0x03FFFFFF
             decode_results = [opcode, target, PC]
@@ -295,6 +311,7 @@ class Simulator:
 
             # Add dependency on regiester 31 for JAl instruction
             self.R_dependences.add(31)
+
         
         # If floating point instruction (potentially does not include control flow and l.s, s.s)
         # may need to remove the (current_instruction & 0x3E00000) >> 21 for more instructions
@@ -326,21 +343,18 @@ class Simulator:
                 # Update dependency table for floating point registers
                 self.F_dependences.add(d)
             
-        
         # If i-type: [opcode, s, t, immediate]
         else:
             s = (current_instruction & 0x03E00000) >> 21
             t = (current_instruction & 0x001F0000) >> 16
             immediate = current_instruction & 0x0000FFFF
 
-            # "Sign extension"
+            # Sign extension
             if (immediate >> 15 == 1):
                 immediate = -1*(immediate ^ 0xFFFF)-1
 
             # If t is a source, use value self.R[t]
             # This includes: beq, bne, sw, sb
-
-            # TODO: As we add more instructions, we need to expand these lists.
             if opcode in [0b000100, 0b000101, 0b101011, 0b101000]:
 
                 # If data dependency then stall - pass a noop
@@ -468,14 +482,16 @@ class Simulator:
 
                 self.status = "EX slt; " + self.status
 
+            # If mflo or mfhi
+            elif funct in [0b010010, 0b010000]:
+                execute_results = [opcode, funct, d, s]
+                self.status = "EX mfhi/lo val {} to {}; ".format(s, d) + self.status
 
-            # TODO: if multiple cycle ALU op, stall for one cycle.
-            # If multi-cycle ALU op, add attributes for:
-            # self.EX_midway_through_a_multicycle_operation
-            # self.EX_cycles_remaining
-            # if there are cycles remaining, decrement count and insert a noop.
+            # For multi-cycle ALU operations, if there are cycles remaining,
+            # decrement the count of cycles and insert a noop.
             elif funct in [0b011000, 0b011010]:
-            # and self.EX_multiple_cycle_instruction != false (default is false):
+
+                # If multi-cycle operation but no more cycles remaining
                 if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
                     # mulitply
                     if funct == 0b011000:
@@ -485,21 +501,28 @@ class Simulator:
                     # divide
                     elif funct == 0b011010:
                         execute_results = [opcode, funct, 64, [s%t, s//t]]
-                        self.status = "EX div; " + self.status
+                        self.status = "EX div {}/{}; ".format(s, t) + self.status
 
                     self.EX_multiple_cycle_instruction = False
 
+                # If cycles remaining or instruction not identified as
+                # multicycle yet
                 else:
 
                     # if instruction is not knon to be multiple cycles, make it
                     # known to be and increase cycles remaining
                     if not(self.EX_multiple_cycle_instruction):
-                        self.EX_cycles_remaining = 1
                         self.EX_multiple_cycle_instruction = True
-                    execute_results = 0x0
+
+                        # Assume all multicycle ops delay a single cycle
+                        self.EX_cycles_remaining = 1
+
+                    # Decrement cycle
                     self.EX_cycles_remaining -= 1
 
-                    self.status = "EX stall; " + self.status
+                    # Insert noop
+                    self.buffer[2] = self.EX_NOOP.copy()
+                    self.status = "EX stall for multicycle ALU; " + self.status
                     return
 
             # if jr which is also R-type pass a noop as nothing is left to do
@@ -514,9 +537,10 @@ class Simulator:
             elif funct == 0:
                 execute_results = [opcode, funct, d, t << shift]
                 if d == 0 and t == 0 and shift == 0:
+
                     self.status = "EX noop; " + self.status
                 else:
-                    self.status = "EX sll; " + self.status
+                     self.status = "EX sll; " + self.status
 
             # If srl
             elif funct == 0b000010:
@@ -532,7 +556,7 @@ class Simulator:
                 execute_results = [opcode, funct, d, val]
                 self.status = "EX sra; " + self.status
 
-            # TODO: Implement remaining r-type instructions
+             # TODO: Implement remaining r-type instructions
             else:
                 raise ValueError('Unknown funct {:05b} for R-Type with \
                                  opcode: {:06b}'.format(funct, opcode))
@@ -642,7 +666,7 @@ class Simulator:
             # addi
             elif opcode == 0b001000:
                 execute_results = [opcode, 0, t, s + immediate]
-                self.status = "EX andi; " + self.status
+                self.status = "EX addi; " + self.status
 
             # If slti
             elif opcode == 0b001010:
@@ -704,7 +728,7 @@ class Simulator:
 
         # If syscall
         if self.buffer[2][0] == 0b001100 and len(self.buffer[2]) == 2:
-            self.buffer[3] = self.buffer[2].copy()
+            self.buffer[3] = -1   # We need a distinct syscall code to differentiate from a WB
             self.status = "MEM syscall; " + self.status
             self.EX()
             return
@@ -799,7 +823,7 @@ class Simulator:
         logging.info("WB()")
 
         # If syscall, note the end of program
-        if self.buffer[3][0] == 0b001100:
+        if self.buffer[3] == -1:
             self.status = "WB syscall; " + self.status
             self.end_of_program = True
             self.MEM()
@@ -814,8 +838,8 @@ class Simulator:
         # if reg parameter is set to 64 indicating we need to set hi and lo reg
         elif reg == 64:
             # Write the value to the register
-            self.hi = value[0]
-            self.lo = value[1]
+            self.HI = value[0]
+            self.LO = value[1]
 
             # Clear reg dependency
             self.R_dependences.remove(reg)
@@ -834,7 +858,7 @@ class Simulator:
 
         self.MEM()
 
-    def set_instructions(self, instructions):
+    def set_instructions(self, instructions, data_section=None):
         logging.info("set_instructions()")
         """Set instructions in memory.
 
@@ -844,3 +868,7 @@ class Simulator:
         # TODO: allow setting at any point in memory, not just starting at 0x0
         """
         self.memory_heirarchy[-1].data[:len(instructions)] = instructions
+        if data_section is not None:
+            for idx in data_section:
+                self.memory_heirarchy[-1].data[idx] = data_section[idx]
+

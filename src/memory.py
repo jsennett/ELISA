@@ -340,7 +340,7 @@ class Cache:
         # In either case, write to memory
         response = "wait"
         while response == "wait":
-            response = self.next_level.write(memory_address, value)
+            response = self.next_level.write(memory_address, value, only_byte=only_byte)
 
     def print_data(self):
         """Display cache contents in a console"""

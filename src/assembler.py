@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.WARNING)
 
 def assemble_instruction(text_instruction):
     """Convert text instruction to machine code"""
-    print('parsing:', text_instruction)
+    # print('parsing:', text_instruction)
     """Convert a string instruction into a numerical instruction"""
     split_instruction = text_instruction.split()
     numerical_instruction = -1  # error value
@@ -98,6 +98,14 @@ def assemble_instruction(text_instruction):
             shift = 0
             funct = function_codes.get(mnemonic, 0)
 
+        # Special format for mfhi/mflo
+        elif mnemonic in ["mfhi", "mflo"]:
+            s = 0
+            t = 0
+            d = parse_register(split_instruction[1])
+            shift = 0
+            funct = function_codes.get(mnemonic)
+
         # All others follow the same format
         else:
             s = parse_register(split_instruction[2])
@@ -151,6 +159,7 @@ def assemble_instruction(text_instruction):
         address = parse_immediate(split_instruction[1], 26)
         numerical_instruction = (opcode << 26) + address
 
+    print('parsed:', text_instruction)
     return numerical_instruction
 
 
@@ -255,6 +264,7 @@ def assemble_to_text(text):
     # The .text section always comes first.
     current_section = '.text'
     labels = {}
+    data = {}
     instruction_idx = 0
     lines_without_labels = []
     for line in lines:
@@ -266,7 +276,9 @@ def assemble_to_text(text):
             if current_section == '.text':
                 labels[label] = instruction_idx
             elif current_section == '.data':
-                labels[label] = parse_data_value(value)
+                labels[label] = instruction_idx
+                data[instruction_idx] = int(value, 0)
+                instruction_idx += 1
                 # After parsing data, continue to next line
                 continue
 
@@ -295,23 +307,25 @@ def assemble_to_text(text):
                     break
 
         # Otherwise, use absolute location or value
-        # TODO: Make sure that all labels should be replaced with this value
         else:
             for label in labels:
                 if label in line:
-                    line = line.replace(label, str(labels[label]))
+                    if any([line.startswith(instr) for instr in ['lb', 'lw', 'sb', 'sw']]):
+                        line = line.replace(label, str(labels[label])+'($r0)')
+                    else:
+                        line = line.replace(label, str(labels[label]))
                     break
 
         lines_with_memory_locations.append(line)
 
     print(lines_without_labels)
-    return lines_with_memory_locations
+    return lines_with_memory_locations, data
 
 
 def assemble_to_numerical(text):
     """Convert a string (such as file contents) into a list of
     numerical instructions"""
-    text_instructions = assemble_to_text(text)
+    text_instructions, data = assemble_to_text(text)
     numerical_instructions = [assemble_instruction(line)
                               for line in text_instructions]
-    return numerical_instructions
+    return numerical_instructions, data

@@ -28,7 +28,7 @@ class Ui_mainwindow(object):
         self.tab = QtWidgets.QWidget()
         self.tab.setObjectName("tab")
         self.instructionTable = QtWidgets.QTableWidget(self.tab)
-        self.instructionTable.setGeometry(QtCore.QRect(0, 0, 811, 401))
+        self.instructionTable.setGeometry(QtCore.QRect(0, 0, 811, 371))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -509,7 +509,7 @@ class Ui_mainwindow(object):
         self.memoryDisplayLabel.setObjectName("memoryDisplayLabel")
 
         self.retranslateUi(mainwindow)
-        self.tabs.setCurrentIndex(2)
+        self.tabs.setCurrentIndex(1)
         self.dataTabs.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(mainwindow)
 

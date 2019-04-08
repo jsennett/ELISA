@@ -11,7 +11,8 @@ class SingleInstructionSimulator(Simulator):
         super().__init__()
         DRAM = Memory(lines=2**8, delay=0)
         self.memory_heirarchy = [DRAM]
-        self.set_instructions(assemble_to_numerical(instruction))
+        instructions, data = assemble_to_numerical(instruction)
+        self.set_instructions(instructions)
         self.R = list(range(32))
 
 def test_and():
@@ -105,19 +106,24 @@ def test_sub():
 
 def test_mult():
     tester = SingleInstructionSimulator("mult $r5 $r6")
-    # stall because of mult
+    tester.R[5], tester.R[6] = 0xFFFFFFFF, 0x12345678
+    # 0xFFFFFFFF * 0x12345678 = 0x12345677edcba988
+
+    # 6 cycles because mult takes 2 cycles to complete
     for _ in range(6):
         tester.step()
-    assert(tester.lo == (tester.R[5]*tester.R[6]) & 0xFFFFFFFF)
-    assert(tester.hi == (tester.R[5]*tester.R[6]) >> 32)
+    assert(tester.LO == (0xedcba988))
+    assert(tester.HI == (0x12345677))
 
 def test_div():
-    tester = SingleInstructionSimulator("div $r13 $r12")
-    # stall because of div
+    tester = SingleInstructionSimulator("div $r12 $r13")
+    tester.R[12], tester.R[13] = 0xFFFFFFFF, 0x12345678
+
+    # 6 cycles because div takes 2 cycles to complete
     for _ in range(6):
         tester.step()
-    assert(tester.lo == (tester.R[13]//tester.R[12]))
-    assert(tester.hi == (tester.R[13]%tester.R[12]))
+    assert(tester.LO == (0xFFFFFFFF // 0x12345678))
+    assert(tester.HI == (0xFFFFFFFF %  0x12345678))
 
 def test_beq_true():
     tester = SingleInstructionSimulator("beq $r1 $r1 0xFF")
@@ -258,6 +264,15 @@ def test_sra_negative():
         tester.step()
     assert(tester.R[1] == expected)
 
+def test_sra_negative():
+    input_val = -255
+    expected = -16
+    tester = SingleInstructionSimulator("sra $r1 $r10 4")
+    tester.R[10] = input_val
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[1] == expected)
+
 def test_sra_positive():
     input_val = 0b0111000000000000
     expected = 0b0000011100000000
@@ -304,3 +319,18 @@ def test_syscall():
         assert(tester.end_of_program == False)
         tester.step()
     assert(tester.end_of_program == True)
+
+def test_mflo():
+    tester = SingleInstructionSimulator("mflo $r1")
+    tester.LO = 0xDEADBEEF
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[1] == 0xDEADBEEF)
+
+def test_mfhi():
+    tester = SingleInstructionSimulator("mfhi $r1")
+    tester.HI = 0xDEADBEEF
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[1] == 0xDEADBEEF)
+
