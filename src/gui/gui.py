@@ -37,6 +37,7 @@ status, etc.) and memory (main and cache) in hexadecimal, loading a program from
 file, and stepping through it to see how the state changes. At this point, you will have all
 of the major components of the simulator working.
 
+
 Next steps:
 
     implement breakpoints
@@ -47,6 +48,7 @@ Next steps:
     split display format into two options for data display and address/tag/idx display
 
 """
+import PyQt5.QtCore
 from PyQt5.QtCore import QCoreApplication
 from PyQt5 import QtWidgets, QtGui
 from mainwindow import Ui_mainwindow
@@ -56,7 +58,15 @@ import assembler
 import sys
 
 import logging
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.info)
+
+
+# Modify view for Yash's special 4k computer
+if hasattr(PyQt5.QtCore.Qt, 'AA_EnableHighDpiScaling'):
+   QtWidgets.QApplication.setAttribute(PyQt5.QtCore.Qt.AA_EnableHighDpiScaling, True)
+
+if hasattr(PyQt5.QtCore.Qt, 'AA_UseHighDpiPixmaps'):
+   QtWidgets.QApplication.setAttribute(PyQt5.QtCore.Qt.AA_UseHighDpiPixmaps, True)
 
 
 class ApplicationWindow(QtWidgets.QMainWindow):
