@@ -504,6 +504,7 @@ class Ui_mainwindow(object):
         self.memoryDisplayBox.addItem("")
         self.memoryDisplayBox.addItem("")
         self.memoryDisplayBox.addItem("")
+        self.memoryDisplayBox.addItem("")
         self.memoryDisplayLabel = QtWidgets.QLabel(mainwindow)
         self.memoryDisplayLabel.setGeometry(QtCore.QRect(46, 42, 109, 20))
         self.memoryDisplayLabel.setObjectName("memoryDisplayLabel")
@@ -645,6 +646,7 @@ class Ui_mainwindow(object):
         self.memoryDisplayBox.setItemText(0, _translate("mainwindow", "Binary"))
         self.memoryDisplayBox.setItemText(1, _translate("mainwindow", "Hexadecimal"))
         self.memoryDisplayBox.setItemText(2, _translate("mainwindow", "Decimal"))
+        self.memoryDisplayBox.setItemText(3, _translate("mainwindow", "Human-Readable"))
         self.memoryDisplayLabel.setText(_translate("mainwindow", "<html><head/><body><p><span style=\" font-size:14pt; font-weight:600;\">Display Format:</span></p></body></html>"))
 
 from codeeditor import CodeEditor

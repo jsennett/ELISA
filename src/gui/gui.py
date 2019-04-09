@@ -55,6 +55,8 @@ from mainwindow import Ui_mainwindow
 from simulator import Simulator
 from memory import Memory, Cache
 import assembler
+from assembler_utils import twos_complement
+from utils import b_to_f
 import sys
 
 import logging
@@ -214,7 +216,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                     # Parse associativity options
                     if configuration[level + "Associativity"] == "Direct-Mapped":
                         associativity = 1
-                    elif configuration[level + "Associativity"] == "N-way":
+                    elif configuration[level + "Associativity"] == "N-Way":
                         associativity = lines
                     else:
                         associativity = int(''.join(
@@ -520,12 +522,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Register table
         for idx in range(32):
             # Set R0-R31 and F0-F31
-            self.ui.registerTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.R[idx])))
-            self.ui.registerTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.F[idx])))
+            self.ui.registerTable.setItem(idx, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.R[idx], register_type="int")))
+            self.ui.registerTable.setItem(idx, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.F[idx], register_type="float")))
 
         # Set LO / HI
-        self.ui.registerTable.setItem(32, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.LO)))
-        self.ui.registerTable.setItem(32, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.HI)))
+        self.ui.registerTable.setItem(32, 0, QtWidgets.QTableWidgetItem(self.display(self.simulator.LO, register_type="int")))
+        self.ui.registerTable.setItem(32, 1, QtWidgets.QTableWidgetItem(self.display(self.simulator.HI, register_type="int")))
 
         # 0-indexed vertical header for registers $R0-$R32, $F0-$F32
         self.ui.registerTable.setVerticalHeaderLabels([str(n) for n in range(32)]
@@ -599,7 +601,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         return idx + displacement
 
 
-    def display(self, n, min_bits=1):
+    def display(self, n, min_bits=1, register_type=None):
         """Display an int n according to the set display format"""
         # TODO: If we want leading zeros, implement the min_bits argument to specify extent of left-padding.
         # For now, ignore leading zeros; I think this will look better.
@@ -614,8 +616,20 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 return '-' + bin(n)[3:]
         elif display_format == "Hexadecimal":
             return hex(n)
-        else:
+        elif display_format == "Decimal":
             return str(n)
+        elif display_format == "Human-Readable":
+            if register_type is None:
+                return hex(n)
+            elif register_type == "int":
+                if n >> 31 == 1:
+                    return '-' + str(twos_complement(n, 32))
+                else:
+                    return str(n)
+            elif register_type == "float":
+                return str(b_to_f(n))
+        else:
+            raise ValueError("Invalid display format: {}".format(display_format))
 
     def save(self):
         """Save a program's state, including all information needed to
