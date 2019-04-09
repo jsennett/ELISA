@@ -6,17 +6,20 @@ alu_tester:
     ########## ADDITION ###########
     # Store immediates so we can do some math
     addi $r1 $r0 1     # r1 = 1
-    addi $r2 $r0 2     # r2 = 2
-    add  $r3 $r1 $r2   # r3 = r1 + r2   
+    addi $r1 $r1 2     # r1 = r1 + 2
+    add  $r1 $r1 $r1   # r1 = r1 + r1   
+    lw $r2 expected_add 
     
     # If the branch is taken, something went wrong! 
-    beq $r3 $r2 logic_tester  # r3 =? r2 
+    bne $r1 $r2 logic_tester  # r1 =? r2 
 
     ########## SUBTRACTION ###########
-    sub $r4 $r3 $r2              # r4 = r3 - r2 
+    addi $r3 $r0 100             # r3 = 100
+    sub $r3 $r3 $r2              # r3 = r3 - r2
+    lw $r4 expected_sub
     
     # If the branch is taken, something went wrong! 
-    bne $r4 $r1 logic_tester     # r4 =? r1
+    bne $r3 $r4 logic_tester     # r4 =? r1
 
     ########## ARITHMETIC SHIFT ###########
     addi $r5 $r0 0xABC0         # r5 = 0xABC0 (Negative!)
@@ -114,12 +117,12 @@ load_n_store_tester:
 
 floating_point_tester: 
 
-    l.s $f27 one_x           # r27 = x
-    add.s $f27 $f27 $f27     # x = x + x 
-    l.s $f28 two_x           # r27 = x
+    l.s $f0 one_x           # f0 = x
+    add.s $f0 $f0 $f0     # f0 = f0 + f0
+    l.s $f1 two_x           # f1 = 2x
 
     # Check if x + x == 2x
-    c.eq.s $f27 $f28
+    c.eq.s $f0 $f1
 
     # If the branch is taken, something went wrong! 
     bc1f exit
@@ -135,6 +138,8 @@ correct:
     jr $ra
 
 .data
+    expected_add: 6
+    expected_sub: 94
     expected_sra: 0xFFFFFABC
     expected_mult_hi: 0x0000003f
     expected_mult_lo: 0xff000100

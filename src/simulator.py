@@ -971,8 +971,8 @@ class Simulator:
             self.F[reg-32] = value
 
             # Clear reg dependency
-            self.F_dependences.remove(reg-32)
             self.status = "WB {} to $f{}; ".format(value, reg) + self.status
+            self.F_dependences.remove(reg-32)
 
         # if reg parameter is set to 64 indicating we need to set hi and lo reg
         elif reg == 64:
