@@ -20,8 +20,8 @@ alu_tester:
 
     ########## ARITHMETIC SHIFT ###########
     addi $r5 $r0 0xABC0         # r5 = 0xABC0 (Negative!)
-    sra $r5 $r5 4                   # r5 = $r5 >> 4 
-    addi $r6 $r0 0xFABC          # r5 = 0xFABC
+    sra $r5 $r5 4                   # r5 = $r5 >> 4
+    lw $r6 expected_sra
 
     # If the branch is taken, something went wrong! 
     bne $r5 $r6 logic_tester        # r5 ?= r6
@@ -107,15 +107,16 @@ load_n_store_tester:
     # Load expected value
     lw $r26 expected_lw
 
+    # If the branch is taken, something went wrong! 
     bne $r25 $r26 floating_point_tester
 
     jal correct
 
 floating_point_tester: 
 
-    l.s $f27 x               # r27 = x
+    l.s $f27 one_x           # r27 = x
     add.s $f27 $f27 $f27     # x = x + x 
-    l.s $f28 x_times_two     # r27 = x
+    l.s $f28 two_x           # r27 = x
 
     # Check if x + x == 2x
     c.eq.s $f27 $f28
@@ -134,8 +135,9 @@ correct:
     jr $ra
 
 .data
+    expected_sra: 0xFFFFFABC
     expected_mult_hi: 0x0000003f
     expected_mult_lo: 0xff000100
     expected_lw: 0x89EFCDAB
-    x: 2.5
-    x_times_two: 5.0
+    one_x: 2.5
+    two_x: 5.0
