@@ -8,6 +8,7 @@ Simulator
 
 """
 from memory import Memory, Cache
+from utils import f_to_b, b_to_f
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -97,6 +98,7 @@ class Simulator:
         self.PC = 0
         self.HI = 0
         self.LO = 0
+        self.CC = 0
 
         # Cycle count
         self.cycle = 0
@@ -313,16 +315,14 @@ class Simulator:
             self.R_dependences.add(31)
 
         
-        # If floating point instruction (potentially does not include control flow and l.s, s.s)
+        # If floating point instruction (does not include  l.s, s.s)
         # may need to remove the (current_instruction & 0x3E00000) >> 21 for more instructions
         elif opcode == 0b010001 and (current_instruction & 0x3E00000) >> 21 == 0b010000:
             special = (current_instruction & 0x03E00000) >> 21
-            s = (current_instruction & 0x001F0000) >> 16
-            t = (current_instruction & 0x0000F800) >> 11
+            t = (current_instruction & 0x001F0000) >> 16
+            s = (current_instruction & 0x0000F800) >> 11
             d = (current_instruction & 0x000007C0) >> 6
             funct = (current_instruction & 0x3F)
-            
-            
             
             
             # If data dependency then stall - pass a noop and don't call IF
@@ -334,15 +334,73 @@ class Simulator:
 
             else:
                 
-                # add 32 to the register # d in order to let WB stage know  
-                # that it needs to write to the floating point regiesters
-                decode_results = [opcode, self.F[s], self.F[t], d+32, special, funct, PC]
-                
                 self.status = "ID FP Instruction; " + self.status
-
-                # Update dependency table for floating point registers
-                self.F_dependences.add(d)
+                # if control flow instructions c.eq.s, c.le.s, c.lt.s
+                if (current_instruction & 0x0000000F) in [0x2, 0xe, 0xc]:
+                    # comparing fp instructions have a slightly different format
+                    # 0x11, 0x10, ft, fs, cc, 0, FC, 0xe: taking [6,5,5,5,3,2,24] bits respectively
+                    decode_results = [opcode, self.F[s], self.F[t], d+32, special, current_instruction & 0x0000000F, PC]
+                    
+                else:
+                    # add 32 to the register # d in order to let WB stage know  
+                    # that it needs to write to the floating point regiesters
+                    decode_results = [opcode, self.F[s], self.F[t], d+32, special, funct, PC]
+                    
+                    # Update dependency table for floating point registers
+                    self.F_dependences.add(d)  
+        
+        # if bc1t bc1f fp instruction in a different format
+        # 0x11 8 cc 0 Offset: taking [6 5 3 2 16] bits respectively
+        elif opcode == 0b010001 and (current_instruction & 0x03E00000) >> 21 == 0x8:
+            special = (current_instruction & 0x03E00000) >> 21
+            immediate = current_instruction & 0x000FFFF
+            funct = (current_instruction & 0x00030000) >> 16
+            cc = (current_instruction & 0x00070000) >> 18
             
+            # Sign extension
+            if (immediate >> 15 == 1):
+                immediate = -1*(immediate ^ 0xFFFF)-1
+            
+            # pass '0' values as fillers, handled properly in the EX stage
+            decode_results = [opcode, 0, cc, immediate, special, funct, PC]
+        
+        # if s.s l.s - needs to be different from I-format b/c s is a
+        # t is a floating point register
+        elif opcode in [0b111001, 0b110001] :
+            s = (current_instruction & 0x03E00000) >> 21
+            t = (current_instruction & 0x001F0000) >> 16
+            immediate = current_instruction & 0x0000FFFF
+
+            # Sign extension
+            if (immediate >> 15 == 1):
+                immediate = -1*(immediate ^ 0xFFFF)-1
+
+            # If t is a source, use value self.R[t]: s.s**
+            if opcode == 0b111001 :
+
+                # If data dependency then stall - pass a noop
+                if s in self.R_dependences or t in self.F_dependences:
+                    self.status = "ID data dependency; " + self.status
+                    self.buffer[1] = self.ID_NOOP.copy()
+                    return
+                else:
+                    self.status = "ID I-type decoded; " + self.status
+                    decode_results = [opcode, self.R[s], self.F[t], immediate, PC]
+
+            # If t is a destination, use value t: l.s**
+            else:
+                # If data dependency then stall - pass a noop
+                if s in self.R_dependences:
+                    self.status = "ID data dependency; " + self.status
+                    self.buffer[1] = self.ID_NOOP.copy()
+                    return
+                else:
+                    self.status = "ID I-type decoded; " + self.status
+                    decode_results = [opcode, self.R[s], t+32, immediate, PC]
+
+                    if opcode not in [0b000001, 0b000110, 0b000111, 0b000001]:
+                        self.F_dependences.add(t)
+        
         # If i-type: [opcode, s, t, immediate]
         else:
             s = (current_instruction & 0x03E00000) >> 21
@@ -354,8 +412,8 @@ class Simulator:
                 immediate = -1*(immediate ^ 0xFFFF)-1
 
             # If t is a source, use value self.R[t]
-            # This includes: beq, bne, sw, sb
-            if opcode in [0b000100, 0b000101, 0b101011, 0b101000]:
+            # This includes: beq, bne, sw, sb, s.s**
+            if opcode in [0b000100, 0b000101, 0b101011, 0b101000, 0b111001]:
 
                 # If data dependency then stall - pass a noop
                 if s in self.R_dependences or t in self.R_dependences:
@@ -367,7 +425,7 @@ class Simulator:
                     decode_results = [opcode, self.R[s], self.R[t], immediate, PC]
 
             # If t is a destination, use value t
-            # This includes: addi, andi, ori, xori, slti, lw, lb, bgez, blez, bgtz, bltz
+            # This includes: addi, andi, ori, xori, slti, lw, lb, bgez, blez, bgtz, bltz, l.s**
             # TODO: As we add more instructions, we need to expand these lists.
             else:
                 # If data dependency then stall - pass a noop
@@ -568,35 +626,101 @@ class Simulator:
             # TODO: Confirm PC is correct
             execute_results = [opcode, target, PC]
 
-        # If floating point instructions (potentially does not include control flow and l.s, s.s)
+        # If floating point instructions (does not include control flow and l.s, s.s)
         # can be addressed in the ID stage
         elif current_instruction[0] == 0b010001:
             opcode, s, t, d, special, funct, PC = current_instruction
             
-            # add.s
-            if funct == 0b000000:
-                pass
+            # if bc1t or bc1f
+            if special == 0x8:
+                # properly represent values, currently ccc in insttruction not used
+                # value in s is junk, t = cc from instruction, d = immediate
+                condition_code = t
+                immediate = d
+                
+                # if bc1f
+                if funct == 0:
+                    # If branch is taken
+                    if self.CC == False:
+                        execute_results = [opcode, special, PC - 4 + (immediate << 2)]
+                        self.status = "EX bc1f, taken; " + self.status
+                    # If branch is not taken push a noop (nothing occurs during MEM
+                    # and WB stage)
+                    else:
+                        self.status = "EX bc1f, not taken; " + self.status
+                        execute_results = self.EX_NOOP.copy()
+                
+                # elif bc1t
+                elif funct == 1:
+                    # If branch is taken
+                    if self.CC == True:
+                        execute_results = [opcode, special, PC - 4 + (immediate << 2)]
+                        self.status = "EX bc1t, taken; " + self.status
+                    # If branch is not taken push a noop (nothing occurs during MEM
+                    # and WB stage)
+                    else:
+                        self.status = "EX bc1t, not taken; " + self.status
+                        execute_results = self.EX_NOOP.copy()
+                
+                # else error
+                else:
+                    raise ValueError("Unknown FP instruction: {}".format(funct))
             
-            # sub.s
-            elif funct == 0b000001:    
-                pass
-            
-            # mul.s, div.s
-            elif funct in [0b000010, 0b000011]:
-                pass
-            
-            #
-            
+            # else other fp instructions other than l.s and s.s
+            else:
+                
+                # add.s
+                if funct == 0b000000:
+                    execute_results = [opcode, funct, d, f_to_b(b_to_f(s) + b_to_f(t))]
+                    self.status = "EX add.s; " + self.status
+                    
+                
+                # sub.s
+                elif funct == 0b000001:    
+                    execute_results = [opcode, funct, d, f_to_b(b_to_f(s) - b_to_f(t))]
+                    self.status = "EX add.s; " + self.status
+                    
+                
+                # c.eq.s
+                elif funct == 0x2:
+                    if b_to_f(s) == b_to_f(t):
+                        self.CC = True
+                    else:
+                        self.CC = False
+                    execute_results = self.EX_NOOP.copy()
+                
+                # c.le.s
+                elif funct == 0xe:
+                    if b_to_f(s) <= b_to_f(t):
+                        self.CC = True
+                    else:
+                        self.CC = False
+                    execute_results = self.EX_NOOP.copy()
+                
+                # c.lt.s
+                elif funct == 0xc:
+                    if b_to_f(s) < b_to_f(t):
+                        self.CC = True
+                    else:
+                        self.CC = False
+                    execute_results = self.EX_NOOP.copy()
+                
+                # currently mul.s is in big conflict with c.eq.s
+                # mul.s, div.s
+                elif funct in [0b000010, 0b000011]:
+                    pass
+        
         # If I-Type
+        # includes floating point l.s and s.s
         else:
             opcode, s, t, immediate, PC = current_instruction
 
             # If t is a source, use value self.R[t]
-            # This includes: sw, sb, lw, lb
-            if opcode in [0b101011, 0b101000, 0b100011, 0b100000]:
+            # This includes: sw, sb, lw, lb, s.s, l.s
+            if opcode in [0b101011, 0b101000, 0b100011, 0b100000, 0b111001, 0b110001]:
                 execute_results = [opcode, t, s + (immediate << 2)]
-                self.status = "EX lw or sw; " + self.status
-
+                self.status = "EX load or store; " + self.status
+            
             # BEQ
             elif opcode == 0b000100:
                 # If branch is taken
@@ -615,7 +739,7 @@ class Simulator:
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bne taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
-                # and WB stage)
+                # and WB stage) 
                 else:
                     execute_results = self.EX_NOOP.copy()
                     self.status = "EX bne, not taken; " + self.status
@@ -735,17 +859,17 @@ class Simulator:
 
         current_instruction = self.buffer[2].copy()
 
-        # If lw, lb, sw, sb
-        if current_instruction[0] in [0b101011, 0b101000, 0b100011, 0b100000]:
+        # If lw, lb, l.s, sw, sb, s.s
+        if current_instruction[0] in [0b101011, 0b101000, 0b110001, 0b100011, 0b100000, 0b111001]:
             opcode, t, s = current_instruction
 
-            # If sw or sb ("sw $rt offset(base)")
-            if opcode in [0b101011, 0b101000]:
+            # If s.s, sw or sb ("sw $rt offset(base)")
+            if opcode in [0b111001, 0b101011, 0b101000]:
 
                 # word or byte?
                 only_byte = True if opcode == 0b101000 else False
-                mnemonic = "sb" if opcode == 0b101000 else "sw"
-
+                mnemonic = "sw" if opcode == 0b100011 else "sb" if opcode == 0b101000 else "s.s"
+                
                 # Write to memory
                 response = self.memory_heirarchy[0].write(memory_address=s, value=t, only_byte=only_byte)
                 if response == "wait":
@@ -759,12 +883,12 @@ class Simulator:
                     self.EX()
                     return
 
-            # If lw or lb ("lw $rt offset(base)")
-            elif opcode in [0b100011, 0b100000]:
+            # If l.s, lw or lb ("lw $rt offset(base)")
+            elif opcode in [0b110001, 0b100011, 0b100000]:
 
                 # word or byte?
                 only_byte = True if opcode == 0b100000 else False
-                mnemonic = "lb" if opcode == 0b100000 else "lw"
+                mnemonic = "lw" if opcode == 0b100011 else "lb" if opcode == 0b100000 else "l.s"
 
                 # Write to memory
                 response = self.memory_heirarchy[0].read(memory_address=s, only_byte=only_byte)
@@ -809,12 +933,28 @@ class Simulator:
             self.buffer[3] = self.MEM_NOOP
             self.EX()
             return
+        
+        # if bc1t or bc1f  [when branch is taken]
+        elif current_instruction[0] == 0b010001 and current_instruction[1] == 0x8 and len(current_instruction) == 3:
+            opcode, special, t = current_instruction
 
+            # Flush the pipeline when the branch is taken
+            self.buffer = [self.IF_NOOP, self.ID_NOOP,
+                           self.EX_NOOP, self.MEM_NOOP]
+
+            # Update the PC with the new value
+            self.PC = t
+            self.status = "MEM branch taken to PC={}; ".format(hex(t)) + self.status
+            self.EX()
+            return
+            
+            
         # TODO: Other instructions need to be caught;
         # this else shouldn't capture all other instruction types.
         # does include jalr
         else:
             opcode, funct, reg, value = current_instruction
+            
             self.buffer[3] = [reg, value]
             self.EX()
             return
@@ -834,6 +974,14 @@ class Simulator:
         # If noop or no writeback needed, don't write back anything
         if reg == 0:
             self.status = "WB noop; "
+            
+        elif reg >= 32 and reg <= 63:
+            # Write the value to the register
+            self.F[reg-32] = value
+
+            # Clear reg dependency
+            self.F_dependences.remove(reg-32)
+            self.status = "WB {} to $f{}; ".format(value, reg) + self.status
 
         # if reg parameter is set to 64 indicating we need to set hi and lo reg
         elif reg == 64:
