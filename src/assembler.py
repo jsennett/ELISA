@@ -13,6 +13,7 @@ For useful documentation on MIPS instructions, see:
 """
 from assembler_utils import r_type, i_type, j_type, \
     opcodes, function_codes, register_names, twos_complement
+from utils import f_to_b
 
 import logging
 logging.basicConfig(level=logging.WARNING)
@@ -277,7 +278,16 @@ def assemble_to_text(text):
                 labels[label] = instruction_idx
             elif current_section == '.data':
                 labels[label] = instruction_idx
-                data[instruction_idx] = int(value, 0)
+
+                print('storing data: {}'.format(value))
+                # If float
+                if '.' in value:
+                    data[instruction_idx] = f_to_b(float(value))
+                    print('float converted to {}'.format(f_to_b(float(value))))
+                # Else, it is a word (int)
+                else:
+                    data[instruction_idx] = int(value, 0)
+
                 instruction_idx += 1
                 # After parsing data, continue to next line
                 continue
@@ -309,8 +319,10 @@ def assemble_to_text(text):
         # Otherwise, use absolute location or value
         else:
             for label in labels:
-                if label in line:
-                    if any([line.startswith(instr) for instr in ['lb', 'lw', 'sb', 'sw']]):
+                # The label should be prefixed by a space, or else it could
+                # appear as a word within another instruction (eg a in addi)
+                if ' '+label in line:
+                    if any([line.startswith(instr) for instr in ['lb', 'lw', 'sb', 'sw', 'l.s', 's.s']]):
                         line = line.replace(label, str(labels[label])+'($r0)')
                     else:
                         line = line.replace(label, str(labels[label]))
@@ -326,6 +338,11 @@ def assemble_to_numerical(text):
     """Convert a string (such as file contents) into a list of
     numerical instructions"""
     text_instructions, data = assemble_to_text(text)
-    numerical_instructions = [assemble_instruction(line)
-                              for line in text_instructions]
+    print(text_instructions, data)
+    numerical_instructions = []
+    for line in text_instructions:
+        try:
+            numerical_instructions.append(assemble_instruction(line))
+        except Exception as e:
+            raise ValueError("Invalid instruction: {}".format(line))
     return numerical_instructions, data

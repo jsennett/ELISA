@@ -333,6 +333,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         while not self.simulator.end_of_program:
             self.simulator.step()
 
+        self.statusBar().showMessage("End of program.")
+        self.update_data()
+
     def import_file(self):
         logging.info("GUI: import_file()")
 
@@ -392,9 +395,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             numerical_instructions, data = assembler.assemble_to_numerical(code)
 
             logging.info(".data section values:" + str(data))
-        except:
-            self.error_dialog.showMessage("Unable to assemble instructions." +
-                                          "\nPleases check your syntax.")
+        except Exception as e:
+            self.error_dialog.showMessage(str(e))
             return
 
 
