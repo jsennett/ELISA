@@ -3,6 +3,7 @@ import sys
 sys.path.append("src/")
 from simulator import Simulator
 from assembler import assemble_to_numerical
+from assembler_utils import twos_complement
 from memory import Memory
 
 class SingleInstructionSimulator(Simulator):
@@ -29,11 +30,25 @@ def test_or():
 
 def test_nor():
     tester = SingleInstructionSimulator("nor $r1 $r2 $r3")
+    # r3 = 00000000000000000000000000000001
+    # r2 = 00000000000000000000000000000010
+    # ---------------------------------------
+    # r1 = 11111111111111111111111111111100
     for _ in range(5):
         tester.step()
-    assert(tester.R[1] == ~(tester.R[2]) & ~(tester.R[3]))
+    assert(tester.R[1] == 0b11111111111111111111111111111100)
 
 def test_xor():
+    tester = SingleInstructionSimulator("xor $r1 $r2 $r3")
+    # r3 = 00000000000000000000000000000011
+    # r2 = 00000000000000000000000000000010
+    # ---------------------------------------
+    # r1 = 00000000000000000000000000000001
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[1] == 0b00000000000000000000000000000001)
+
+def test_xor_negative():
     tester = SingleInstructionSimulator("xor $r1 $r2 $r3")
     for _ in range(5):
         tester.step()
@@ -63,6 +78,28 @@ def test_addi():
         tester.step()
     assert(tester.R[5] == (tester.R[3] + 234))
 
+def test_addi_negative():
+    tester = SingleInstructionSimulator("addi $r5 $r3 -234")
+    for _ in range(5):
+        tester.step()
+    # r5 = -231;
+    assert((tester.R[5] - 2**32) == -231)
+
+def test_slti_negative_taken():
+    # Test when slti condition is taken          -7 <? -6
+    tester = SingleInstructionSimulator("slti $r5 $r3 -6")
+    tester.R[3] = -7
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[5] == 1)
+
+def test_slti_negative_not_taken():
+    # Test when slti condition is taken         3 <? -6
+    tester = SingleInstructionSimulator("slti $r5 $r3 -6")
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[5] == 0)
+
 def test_slti_instruction_taken():
     # Test when slti condition is taken
     tester = SingleInstructionSimulator("slti $r5 $r3 6")
@@ -75,7 +112,7 @@ def test_slti_instruction_not_taken():
     tester = SingleInstructionSimulator("slti $r5 $r3 2")
     for _ in range(5):
         tester.step()
-    assert(tester.R[5] == 5)
+    assert(tester.R[5] == 0)
 
 def test_slt_instruction_taken():
     # Test when slt condition is taken
@@ -99,10 +136,20 @@ def test_add():
     assert(tester.R[1] == tester.R[2] + tester.R[3])
 
 def test_sub():
-    tester = SingleInstructionSimulator("sub $r1 $r2 $r3")
+    tester = SingleInstructionSimulator("sub $r1 $r3 $r2")
     for _ in range(5):
         tester.step()
-    assert(tester.R[1] == tester.R[2] - tester.R[3])
+    assert(tester.R[1] == 3 - 2)
+
+def test_sub_negative():
+    tester = SingleInstructionSimulator("sub $r1 $r3 $r2")
+    # r3 = -100;
+    tester.R[3] = twos_complement(100, 32) # r3 = -100;
+    tester.R[2] = 50 # $r2 = 50
+    expected = twos_complement(150, 32) # $r3 - $r2 = -150
+    for _ in range(5):
+        tester.step()
+    assert(tester.R[1] == expected)
 
 def test_mult():
     tester = SingleInstructionSimulator("mult $r5 $r6")

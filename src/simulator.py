@@ -15,33 +15,13 @@ logging.basicConfig(level=logging.INFO)
 
 class Simulator:
     """
-    Current: Only implements stalls when access to memory does not return a
-    value but a response of "wait" and there is a Jump instruction
-    In order for simulator to finish processing instructions, need to run Noop
-    instructions through the pipeline (0x00000000)
-
     Notes below from source:
     https://www.ece.ucsb.edu/~strukov/ece154aFall2013/viewgraphs/pipelinedMIPS.pdf
-
-    In MIPS pipeline with a single memory
-    – Load/store requires data access
-    – Instruction fetch would have to stall for that cycle
-    - Would cause a pipeline “bubble”
-
-    Prevent the instructions in the IF and ID stages from
-    progressing down the pipeline – done by preventing the PC
-    register and the IF/ID pipeline register from changing
-        – Hazard detection Unit controls the writing of the PC
-        (PC.write) and IF/ID (IF/ID.write) registers
-
-    Data Hazard:
-        Can fix data hazard by waiting – stall – but impacts CPI
-
-    Jumps not decoded until ID, so one flush is needed (destroy loaded
-    intruction in the IF stage)
-
-    OPCODE / FUNCTION Values:
     https://en.wikibooks.org/wiki/MIPS_Assembly/Instruction_Formats
+
+    TODO:
+        Implement multi-operation ALU and FP operations. Look up # cycles.
+        Catch condition codes after ALU operations, e.g. overflow
     """
 
     def __init__(self):
@@ -317,9 +297,10 @@ class Simulator:
             t = (current_instruction & 0x001F0000) >> 16
             immediate = current_instruction & 0x0000FFFF
 
-            # Sign extension
+            # Sign extension; note this means ALU operations will
+            # (purposefully) overflow
             if (immediate >> 15 == 1):
-                immediate = -1*(immediate ^ 0xFFFF)-1
+                immediate = (immediate | 0xFFFF0000)
 
             # If t is a source, use value self.R[t]
             # This includes: beq, bne, sw, sb
@@ -418,27 +399,27 @@ class Simulator:
 
             # If Sub
             elif funct == 0b100010:
-                execute_results = [opcode, funct, d, s-t]
+                execute_results = [opcode, funct, d, (s-t) & 0xFFFFFFFF]
                 self.status = "EX sub; " + self.status
 
             # If bitwise and
             elif funct == 0b100100:
-                execute_results = [opcode, funct, d, s&t]
+                execute_results = [opcode, funct, d, (s&t) & 0xFFFFFFFF]
                 self.status = "EX and; " + self.status
 
             # If bitwise or
             elif funct == 0b100101:
-                execute_results = [opcode, funct, d, s|t]
+                execute_results = [opcode, funct, d, (s|t) & 0xFFFFFFFF]
                 self.status = "EX or; " + self.status
 
             # If bitwise nor
             elif funct == 0b100111:
-                execute_results = [opcode, funct, d, ((~s)&(~t))]
+                execute_results = [opcode, funct, d, ((~s)&(~t)) & 0xFFFFFFFF]
                 self.status = "EX nor; " + self.status
 
             # If xor
             elif funct == 0b100110:
-                execute_results = [opcode, funct, d, s^t]
+                execute_results = [opcode, funct, d, (s^t) & 0xFFFFFFFF]
                 self.status = "EX xor; " + self.status
 
             # If slt
@@ -461,6 +442,7 @@ class Simulator:
 
                 # If multi-cycle operation but no more cycles remaining
                 if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
+
                     # mulitply
                     if funct == 0b011000:
                         value = s*t
@@ -517,10 +499,10 @@ class Simulator:
 
             # If sra
             elif funct == 0b000011:
-                sign = (t & 0x8000) >> 15
+                sign = t >> 31
                 val = t >> shift
                 for i in range(shift):
-                    val |= (sign << (15 - i))
+                    val |= (sign << (31 - i))
                 execute_results = [opcode, funct, d, val]
                 self.status = "EX sra; " + self.status
 
@@ -540,6 +522,7 @@ class Simulator:
         # If I-Type
         else:
             opcode, s, t, immediate, PC = current_instruction
+            i_sign = (immediate >> 31) & 0b1
 
             # If t is a source, use value self.R[t]
             # This includes: sw, sb, lw, lb
@@ -615,15 +598,23 @@ class Simulator:
                     execute_results = self.EX_NOOP.copy()
             # addi
             elif opcode == 0b001000:
-                execute_results = [opcode, 0, t, s + immediate]
+                execute_results = [opcode, 0, t, (s + immediate) & 0xFFFFFFFF]
                 self.status = "EX addi; " + self.status
 
             # If slti
             elif opcode == 0b001010:
-                if s < immediate:
+                s_sign = (s >> 31) & 1
+                print('s: {}, immediate: {}'.format(s, immediate))
+                print('s_sign: {}, i_sign: {}'.format(s_sign, i_sign))
+
+                # If s < immediate, set = 1
+                if (((s_sign == i_sign) and (s < immediate))
+                    or ((s_sign != i_sign) and (s > immediate))):
                     execute_results = [opcode, 0, t, 1]
+
+                # If s >= immediate, set = 0
                 else:
-                    execute_results = self.EX_NOOP.copy()
+                    execute_results = [opcode, 0, t, 0]
                 self.status = "EX slti; " + self.status
 
             # andi
