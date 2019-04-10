@@ -1,94 +1,28 @@
 TODO:
 
-General
+Deadlines
+[ ]   Apr 14 (Sun) - finish remaining instructions
+[ ]   Apr 14 (Sun) - finish ASM benchmarks
+[ ]   Apr 21 (Sun)- finish report sections
+[ ]   Apr 24 (Wed) - Benchmark demo and report due
+[ ]   May 3 - Final report due
 
-[ ]   Fix representation of negative numbers we should store as 2s complement
+Remaining steps
 
+[ ]   Yash - matrix mult asm file
+[ ]   Josh - exchange sort asm file
+[ ]   Yash - Make FP ALU operations multi-cycle
+[ ]   Yash - MUL.S
+[ ]   Yash - DIV.S
+[ ]   Yash - CVT.S.W
+[ ]   Yash - CVT.W.S
+    
 
-GUI
+Final Report
+[ ]   Yash - Describes the architecture (a revision of the earlier report that reflects changes and clarifications that arise later)
+[ ]   Josh - Describes the simulator (it’s overall design, and a user manual)
+[ ]   Josh - Specifies the software engineering methods used
+[ ]   Both - Lists the efforts by person: who ended up doing what on the project
+[ ]   Yash  Presents the performance results of running the benchmarks on the different simulator configurations
+[ ]   Josh - Concludes with a summary of what you have learned from the project and from experimenting with the simulator
 
-[X]   implement breakpoints
-[X]   implement step until breakpoint
-[X]   implement step until completion
-[X]   correctly export/restore program
-[X]   catch exceptions rather than crashing
-[X]   Use pipeline-enabled button to set attribute in simulator
-[X]   Get rid of LRU/Write Policy buttons.
-[X]   Force users to use valid cache sizes (2^X)
-
-Pipeline
-
-[X]   pipeline/no-pipeline mode
-[X]   implement integer operations
-[X]   implement syscall to exit
-[X]   test correctness
-[X]   Handle multiple stage ALU operations
-[ ]   Condition code registers after every ALU
-[ ]   implement floating point operations
-
-Benchmarks
-
-[ ]   develop assembly benchmarks
-   
-Assembler
-
-[X]    Support negative immediate and offsets: this should convert to appropriate
-        size two's complement (16 bits for immediates)
-[X]    Assemble floating point instructions
-[X]    Support sections (.data / .text)
-[X]    Add in all MIPS instructions
-[X]    Allow labels to refer to variables in .data
-[X]    Change register names to match MIPS naming ($v0, $t0, etc.)
-[X]    support syscall command
-[X]    Code validation, helpful error messsages
-[-]    Documentation
-  Optional
-[ ]    Validate keywords (eg labels can be instruction names, registers 0-31)
-
-
-Instructions
-      Arithmetic
-	[X]    ADD
-	[X]    ADDI
-	[X]    SUB
-	[X]    SLL
-	[X]    SRL
-	[X]    MULT
-	[X]    DIV
-	[X]    AND
-	[X]    ANDI
-	[X]    OR
-	[X]    ORI
-	[X]    XOR
-	[X]    XORI
-	[X]    NOR
-	[X]    BEQ
-	[X]    BNE
-	[X]    BGEZ
-	[X]    BLEZ
-	[X]    BGZ
-	[X]    BLZ
-	[X]    J
-	[X]    JAL
-[X]    JR
-[X]    JALR
-[X]    SLT
-[X]    SLTI
-[X]    LB
-[X]    LW
-[X]    SB
-[X]    SW
-[X]    SYSCALL
-[ ]    ADD.S
-[ ]    SUB.S
-[ ]    MUL.S
-[ ]    DIV.S
-[ ]    CVT.S.W
-[ ]    CVT.W.S
-[ ]    C.EQ.S
-[ ]    C.LE.S
-[ ]    C.LT.S
-[ ]    BC1T
-[ ]    BC1F
-[ ]    L.S
-[ ]    S.S
