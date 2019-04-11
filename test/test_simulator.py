@@ -5,7 +5,7 @@ from simulator import Simulator
 from assembler import assemble_to_numerical
 from memory import Memory, Cache
 
-def test_IF():
+def test_simulator():
 
     # Create a simulator
     sim = Simulator()
