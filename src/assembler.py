@@ -236,6 +236,15 @@ def parse_data_value(value):
 
     Return integer value
     """
+    # If float
+    if '.' in value:
+        return f_to_b(float(value))
+    # If decimal, hex, or binary
+    else:
+        return int(value, 0)
+
+
+
     words = value.split()
     if words[0] not in ['.word']:
         raise ValueError('Invalid data type')
@@ -246,7 +255,7 @@ def parse_data_value(value):
 
 def assemble_to_text(text):
     """Parse assembly code to generate text instructions"""
-    text = text.replace(',', '').replace('\t', ' ')
+    text = text.replace(',', ' ').replace('\t', ' ')
     text = text.replace("\r\n", "\n")
 
     # Split into lines
@@ -279,18 +288,24 @@ def assemble_to_text(text):
             elif current_section == '.data':
                 labels[label] = instruction_idx
 
-                print('storing data: {}'.format(value))
-                # If float
-                if '.' in value:
-                    data[instruction_idx] = f_to_b(float(value))
-                    print('float converted to {}'.format(f_to_b(float(value))))
-                # Else, it is a word (int)
-                else:
-                    data[instruction_idx] = int(value, 0)
+                # If array
+                if '[' in value and ']' in value:
 
-                instruction_idx += 1
-                # After parsing data, continue to next line
-                continue
+                    # The label refers to the location of the first element
+                    labels[label] = instruction_idx
+
+                    # Parse between brackets; split words; then convert each to
+                    # a data value (could be binary, hex, decimal, or float)
+                    words = value[value.find('[')+1: value.find(']')].split()
+                    for word in words:
+
+                        data[instruction_idx] = parse_data_value(word)
+                        instruction_idx += 1
+
+                # If single word
+                else:
+                    data[instruction_idx] = parse_data_value(value)
+                    instruction_idx += 1
 
         # If section label
         elif line == '.text':
@@ -344,5 +359,5 @@ def assemble_to_numerical(text):
         try:
             numerical_instructions.append(assemble_instruction(line))
         except Exception as e:
-            raise ValueError("Invalid instruction: {}".format(line))
+            raise ValueError("Invalid instruction: {} ({})".format(line, e))
     return numerical_instructions, data
