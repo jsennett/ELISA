@@ -332,10 +332,10 @@ def assemble_to_text(text):
                     break
 
         elif line.startswith('la'):
-            #  "la $r2 label" -> "addi $r2 0x08", (if label stored at 0x08)
+            #  "la $r2 label" -> "addi $r2 $zero 0x08", (if label stored at 0x08)
             for label in labels:
                 if ' '+label in line:
-                    line = line.replace(label, hex(4 * labels[label]))
+                    line = line.replace(label, '$zero ' + hex(4 * labels[label]))
                     line = line.replace('la ', 'addi ')
 
         # Otherwise, use absolute location or value
