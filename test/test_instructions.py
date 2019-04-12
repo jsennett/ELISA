@@ -128,7 +128,7 @@ def test_slt_instruction_not_taken():
     tester = SingleInstructionSimulator("slt $r5 $r3 $2")
     for _ in range(5):
         tester.step()
-    assert(tester.R[5] == 5)
+    assert(tester.R[5] == 0)
 
 def test_add():
     tester = SingleInstructionSimulator("add $r1 $r2 $r3")

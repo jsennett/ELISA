@@ -517,7 +517,7 @@ class Simulator:
                 if s < t:
                     execute_results = [opcode, funct, d, 1]
                 else:
-                    execute_results = self.EX_NOOP.copy()
+                    execute_results = [opcode, funct, d, 0]
 
                 self.status = "EX slt; " + self.status
 
@@ -778,8 +778,6 @@ class Simulator:
             # If slti
             elif opcode == 0b001010:
                 s_sign = (s >> 31) & 1
-                print('s: {}, immediate: {}'.format(s, immediate))
-                print('s_sign: {}, i_sign: {}'.format(s_sign, i_sign))
 
                 # If s < immediate, set = 1
                 if (((s_sign == i_sign) and (s < immediate))
