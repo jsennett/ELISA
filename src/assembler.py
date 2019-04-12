@@ -331,11 +331,19 @@ def assemble_to_text(text):
                     line = line.replace(label, str(labels[label] - i))
                     break
 
+        elif line.startswith('la'):
+            #  "la $r2 label" -> "addi $r2 0x08", (if label stored at 0x08)
+            for label in labels:
+                if ' '+label in line:
+                    line = line.replace(label, hex(4 * labels[label]))
+                    line = line.replace('la ', 'addi ')
+
         # Otherwise, use absolute location or value
         else:
             for label in labels:
                 # The label should be prefixed by a space, or else it could
                 # appear as a word within another instruction (eg a in addi)
+                # A label cannot be a prefix of another label or instruction.
                 if ' '+label in line:
                     if any([line.startswith(instr) for instr in ['lb', 'lw', 'sb', 'sw', 'l.s', 's.s']]):
                         line = line.replace(label, str(labels[label])+'($r0)')
