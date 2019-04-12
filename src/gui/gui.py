@@ -556,6 +556,42 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 for offset in range(self.simulator.memory_heirarchy[level].words_per_line):
                     self.ui.cacheTable.setItem(cache_table_idx, 4 + offset, QtWidgets.QTableWidgetItem(self.display(self.simulator.memory_heirarchy[level].data[idx][1 + offset])))
 
+        # Instruction table: color the line of PC counter green
+        rowcount = self.ui.instructionTable.rowCount()
+        columncount = self.ui.instructionTable.columnCount()
+        for row_idx in range(rowcount):
+
+            # If instruction memory address = simulator program counter,
+            # highlight the row green
+            if self.ui.instructionTable.item(row_idx, 0).text() == hex(self.simulator.PC):
+
+                for col_idx in range(columncount):
+
+                    # Before changing background, make sure the cell is not
+                    # None; rather, it should be a cell displaying ""
+                    cell = self.ui.instructionTable.item(row_idx, col_idx)
+                    if cell is None:
+                        self.ui.instructionTable.setItem(row_idx, col_idx, QtWidgets.QTableWidgetItem(""))
+                        cell = self.ui.instructionTable.item(row_idx, col_idx)
+
+                    # Change the background to green
+                    cell.setBackground(QtGui.QColor(182, 215, 168))
+
+            # For all other cells, make sure the background is white
+            else:
+
+                for col_idx in range(columncount):
+
+                    # Before changing background, make sure the cell is not
+                    # None; rather, it should be a cell displaying ""
+                    cell = self.ui.instructionTable.item(row_idx, col_idx)
+                    if cell is None:
+                        self.ui.instructionTable.setItem(row_idx, col_idx, QtWidgets.QTableWidgetItem(""))
+                        cell = self.ui.instructionTable.item(row_idx, col_idx)
+
+                    # Change the background to green
+                    cell.setBackground(QtGui.QColor(255, 255, 255))
+
         # Pipeline table: 4 buffer rows, Cycle, PC, status, dependencies and # memory levels
         pipeline_rows = 4 + 5 + len(self.simulator.memory_heirarchy)
         self.ui.pipelineTable.setRowCount(pipeline_rows)
