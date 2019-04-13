@@ -163,6 +163,26 @@ def test_mult():
     assert(tester.LO == (0xedcba988))
     assert(tester.HI == (0x12345677))
 
+def test_muls():
+    tester = SingleInstructionSimulator("mul.s $f4 $f5 $f6")
+    tester.F[5], tester.F[6] = f_to_b(5.5), f_to_b(10.0)
+
+    print(f_to_b(tester.F[4]))
+    # 6 cycles because mul.s takes 6 cycles to complete
+    for _ in range(11):
+        tester.step()
+    print(f_to_b(tester.F[4]))
+    assert(tester.F[4] == f_to_b(55.0))
+
+def test_divs():
+    tester = SingleInstructionSimulator("div.s $f4 $f5 $f6")
+    tester.F[5], tester.F[6] = f_to_b(5.5), f_to_b(5.5)
+
+    # 6 cycles because div.s takes 24 cycles to complete
+    for _ in range(29):
+        tester.step()
+    assert(tester.F[4] == f_to_b(1.0))
+
 def test_div():
     tester = SingleInstructionSimulator("div $r12 $r13")
     tester.R[12], tester.R[13] = 0xFFFFFFFF, 0x12345678
@@ -402,7 +422,7 @@ def test_adds():
     tester.F[1] = f_to_b(4.0)
     tester.F[2] = f_to_b(4.0)
     tester.F[3] = f_to_b(2.0)
-    for _ in range(5):
+    for _ in range(8):
         tester.step()
     assert(tester.F[1] == f_to_b(b_to_f(tester.F[2]) + b_to_f(tester.F[3])))
     
@@ -413,7 +433,7 @@ def test_subs():
     tester.F[2] = f_to_b(4.0)
     tester.F[3] = f_to_b(2.0)
     print(tester.F[1], tester.F[2], tester.F[3])
-    for _ in range(5):
+    for _ in range(8):
         tester.step()
     assert(tester.F[1] == f_to_b(b_to_f(tester.F[2]) - b_to_f(tester.F[3])))
     

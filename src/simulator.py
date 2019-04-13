@@ -315,20 +315,21 @@ class Simulator:
             else:
 
                 self.status = "ID FP Instruction; " + self.status
-                # if control flow instructions c.eq.s, c.le.s, c.lt.s
-                if (current_instruction & 0x0000000F) in [0x2, 0xe, 0xc]:
-                    # comparing fp instructions have a slightly different format
-                    # 0x11, 0x10, ft, fs, cc, 0, FC, 0xe: taking [6,5,5,5,3,2,24] bits respectively
-                    decode_results = [opcode, self.F[s], self.F[t], d+32, special, current_instruction & 0x0000000F, PC]
+                # All instructions except for branches and memory access follow
+                # the same format.
+                # add 32 to the register # d in order to let WB stage know
+                # that it needs to write to the floating point regiesters
+                decode_results = [opcode, self.F[s], self.F[t], d+32, special, funct, PC]
 
-                else:
-                    # add 32 to the register # d in order to let WB stage know
-                    # that it needs to write to the floating point regiesters
-                    decode_results = [opcode, self.F[s], self.F[t], d+32, special, funct, PC]
-
-                    # Update dependency table for floating point registers
-                    self.F_dependences.add(d)
-
+                # Update dependency table for floating point registers
+                self.F_dependences.add(d)
+        
+        # if cvt.s.w 
+        elif opcode == 0b010001 and (current_instruction & 0x3E00000) >> 21 == 0b010100:
+            special = (current_instruction & 0x03E00000) >> 21
+            immediate = current_instruction & 0x000FFFF
+            funct = (current_instruction & 0x00030000) >> 16
+            pass
         # if bc1t bc1f fp instruction in a different format
         # 0x11 8 cc 0 Offset: taking [6 5 3 2 16] bits respectively
         elif opcode == 0b010001 and (current_instruction & 0x03E00000) >> 21 == 0x8:
@@ -653,18 +654,58 @@ class Simulator:
 
                 # add.s
                 if funct == 0b000000:
-                    execute_results = [opcode, funct, d, f_to_b(b_to_f(s) + b_to_f(t))]
-                    self.status = "EX add.s; " + self.status
+                    # If multi-cycle operation but no more cycles remaining
+                    if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
+                        execute_results = [opcode, funct, d, f_to_b(b_to_f(s) + b_to_f(t))]
+                        self.status = "EX mul.s; " + self.status
+                        self.EX_multiple_cycle_instruction = False
+    
+                    # If cycles remaining or instruction not identified as
+                    # multicycle yet
+                    else:
+                        # if instruction is not knon to be multiple cycles, make it
+                        # known to be and increase cycles remaining
+                        if not(self.EX_multiple_cycle_instruction):
+                            self.EX_multiple_cycle_instruction = True
+                            # Assume mul.s operation has a latency of 6 cycles
+                            self.EX_cycles_remaining = 3
+                        # Decrement cycle
+                        self.EX_cycles_remaining -= 1
+    
+                        # Insert noop
+                        self.buffer[2] = self.EX_NOOP.copy()
+                        self.status = "EX stall for multicycle ALU; " + self.status
+                        return
 
 
                 # sub.s
                 elif funct == 0b000001:
-                    execute_results = [opcode, funct, d, f_to_b(b_to_f(s) - b_to_f(t))]
-                    self.status = "EX add.s; " + self.status
+                    # If multi-cycle operation but no more cycles remaining
+                    if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
+                        execute_results = [opcode, funct, d, f_to_b(b_to_f(s) - b_to_f(t))]
+                        self.status = "EX mul.s; " + self.status
+                        self.EX_multiple_cycle_instruction = False
+    
+                    # If cycles remaining or instruction not identified as
+                    # multicycle yet
+                    else:
+                        # if instruction is not knon to be multiple cycles, make it
+                        # known to be and increase cycles remaining
+                        if not(self.EX_multiple_cycle_instruction):
+                            self.EX_multiple_cycle_instruction = True
+                            # Assume mul.s operation has a latency of 6 cycles
+                            self.EX_cycles_remaining = 3
+                        # Decrement cycle
+                        self.EX_cycles_remaining -= 1
+    
+                        # Insert noop
+                        self.buffer[2] = self.EX_NOOP.copy()
+                        self.status = "EX stall for multicycle ALU; " + self.status
+                        return
 
 
                 # c.eq.s
-                elif funct == 0x2:
+                elif funct == 0b110010:
                     if b_to_f(s) == b_to_f(t):
                         self.CC = True
                     else:
@@ -672,7 +713,7 @@ class Simulator:
                     execute_results = self.EX_NOOP.copy()
 
                 # c.le.s
-                elif funct == 0xe:
+                elif funct == 0b111110:
                     if b_to_f(s) <= b_to_f(t):
                         self.CC = True
                     else:
@@ -680,18 +721,63 @@ class Simulator:
                     execute_results = self.EX_NOOP.copy()
 
                 # c.lt.s
-                elif funct == 0xc:
+                elif funct == 0b111100:
                     if b_to_f(s) < b_to_f(t):
                         self.CC = True
                     else:
                         self.CC = False
                     execute_results = self.EX_NOOP.copy()
 
-                # currently mul.s is in big conflict with c.eq.s
-                # mul.s, div.s
-                elif funct in [0b000010, 0b000011]:
-                    pass
-
+                # mul.s
+                elif funct == 0b000010:
+                    # If multi-cycle operation but no more cycles remaining
+                    if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
+                        execute_results = [opcode, funct, d, f_to_b(b_to_f(s) * b_to_f(t))]
+                        self.status = "EX mul.s; " + self.status
+                        self.EX_multiple_cycle_instruction = False
+    
+                    # If cycles remaining or instruction not identified as
+                    # multicycle yet
+                    else:
+                        # if instruction is not knon to be multiple cycles, make it
+                        # known to be and increase cycles remaining
+                        if not(self.EX_multiple_cycle_instruction):
+                            self.EX_multiple_cycle_instruction = True
+                            # Assume mul.s operation has a latency of 6 cycles
+                            self.EX_cycles_remaining = 6
+                        # Decrement cycle
+                        self.EX_cycles_remaining -= 1
+    
+                        # Insert noop
+                        self.buffer[2] = self.EX_NOOP.copy()
+                        self.status = "EX stall for multicycle ALU; " + self.status
+                        return
+                
+                # div.s
+                elif funct == 0b000011:
+                    # If multi-cycle operation but no more cycles remaining
+                    if self.EX_cycles_remaining == 0 and self.EX_multiple_cycle_instruction:
+                        execute_results = [opcode, funct, d, f_to_b(b_to_f(s) / b_to_f(t))]
+                        self.status = "EX mul.s; " + self.status
+                        self.EX_multiple_cycle_instruction = False
+    
+                    # If cycles remaining or instruction not identified as
+                    # multicycle yet
+                    else:
+                        # if instruction is not knon to be multiple cycles, make it
+                        # known to be and increase cycles remaining
+                        if not(self.EX_multiple_cycle_instruction):
+                            self.EX_multiple_cycle_instruction = True
+                            # Assume mul.s operation has a latency of 24 cycles
+                            self.EX_cycles_remaining = 24
+                        # Decrement cycle
+                        self.EX_cycles_remaining -= 1
+    
+                        # Insert noop
+                        self.buffer[2] = self.EX_NOOP.copy()
+                        self.status = "EX stall for multicycle ALU; " + self.status
+                        return
+                    
         # If I-Type
         # includes floating point l.s and s.s
         else:
