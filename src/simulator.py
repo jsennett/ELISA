@@ -518,7 +518,7 @@ class Simulator:
                 if s < t:
                     execute_results = [opcode, funct, d, 1]
                 else:
-                    execute_results = self.EX_NOOP.copy()
+                    execute_results = [opcode, funct, d, 0]
 
                 self.status = "EX slt; " + self.status
 
@@ -864,8 +864,6 @@ class Simulator:
             # If slti
             elif opcode == 0b001010:
                 s_sign = (s >> 31) & 1
-                print('s: {}, immediate: {}'.format(s, immediate))
-                print('s_sign: {}, i_sign: {}'.format(s_sign, i_sign))
 
                 # If s < immediate, set = 1
                 if (((s_sign == i_sign) and (s < immediate))
@@ -987,9 +985,12 @@ class Simulator:
                                         0b000110, 0b000111, 0b000001]:
             opcode, t = current_instruction
 
-            # Flush the pipeline when the branch is taken
+            # Flush the pipeline when the branch is taken, and clear the
+            # dependency tables since the dependent instructions were flushed
             self.buffer = [self.IF_NOOP, self.ID_NOOP,
                            self.EX_NOOP, self.MEM_NOOP]
+            self.R_dependences.clear()
+            self.F_dependences.clear()
 
             # Update the PC with the new value
             self.PC = t
@@ -1015,9 +1016,12 @@ class Simulator:
         elif current_instruction[0] == 0b010001 and current_instruction[1] == 0x8 and len(current_instruction) == 3:
             opcode, special, t = current_instruction
 
-            # Flush the pipeline when the branch is taken
+            # Flush the pipeline when the branch is taken, and clear the
+            # dependency tables since the dependent instructions were flushed
             self.buffer = [self.IF_NOOP, self.ID_NOOP,
                            self.EX_NOOP, self.MEM_NOOP]
+            self.R_dependences.clear()
+            self.F_dependences.clear()
 
             # Update the PC with the new value
             self.PC = t

@@ -128,7 +128,7 @@ def test_slt_instruction_not_taken():
     tester = SingleInstructionSimulator("slt $r5 $r3 $2")
     for _ in range(5):
         tester.step()
-    assert(tester.R[5] == 5)
+    assert(tester.R[5] == 0)
 
 def test_add():
     tester = SingleInstructionSimulator("add $r1 $r2 $r3")
@@ -386,7 +386,7 @@ def test_ls():
     tester.memory_heirarchy[0].data[10] = f_to_b(4.5)
     for _ in range(5):
         tester.step()
-        
+
     assert(tester.F[1] == f_to_b(4.5))
 
 def test_ss():
@@ -417,7 +417,7 @@ def test_mfhi():
     assert(tester.R[1] == 0xDEADBEEF)
 
 def test_adds():
-    
+
     tester = SingleInstructionSimulator("add.s $f1 $f2 $f3")
     tester.F[1] = f_to_b(4.0)
     tester.F[2] = f_to_b(4.0)
@@ -425,9 +425,9 @@ def test_adds():
     for _ in range(8):
         tester.step()
     assert(tester.F[1] == f_to_b(b_to_f(tester.F[2]) + b_to_f(tester.F[3])))
-    
+
 def test_subs():
-        
+
     tester = SingleInstructionSimulator("sub.s $f1 $f2 $f3")
     tester.F[1] = f_to_b(3.0)
     tester.F[2] = f_to_b(4.0)
@@ -436,15 +436,15 @@ def test_subs():
     for _ in range(8):
         tester.step()
     assert(tester.F[1] == f_to_b(b_to_f(tester.F[2]) - b_to_f(tester.F[3])))
-    
+
 def test_ceqs_true():
     tester = SingleInstructionSimulator("c.eq.s $f1 $f2")
     tester.F[1] = f_to_b(4.0)
     tester.F[2] = f_to_b(4.0)
     for _ in range(3):
         tester.step()
-    assert(tester.CC == True)  
-    
+    assert(tester.CC == True)
+
 def test_ceqs_false():
     tester = SingleInstructionSimulator("c.eq.s $f1 $f2")
     tester.F[1] = f_to_b(4.0)
@@ -452,15 +452,15 @@ def test_ceqs_false():
     for _ in range(3):
         tester.step()
     assert(tester.CC == False)
-        
+
 def test_cles_true():
     tester = SingleInstructionSimulator("c.le.s $f1 $f2")
     tester.F[1] = f_to_b(4.0)
     tester.F[2] = f_to_b(4.0)
     for _ in range(3):
         tester.step()
-    assert(tester.CC == True)  
-    
+    assert(tester.CC == True)
+
 def test_cles_false():
     tester = SingleInstructionSimulator("c.le.s $f1 $f2")
     tester.F[1] = f_to_b(5.0)
@@ -468,15 +468,15 @@ def test_cles_false():
     for _ in range(3):
         tester.step()
     assert(tester.CC == False)
-    
+
 def test_clts_true():
     tester = SingleInstructionSimulator("c.lt.s $f1 $f2")
     tester.F[1] = f_to_b(3.0)
     tester.F[2] = f_to_b(4.0)
     for _ in range(3):
         tester.step()
-    assert(tester.CC == True)  
-    
+    assert(tester.CC == True)
+
 def test_clts_false():
     tester = SingleInstructionSimulator("c.lt.s $f1 $f2")
     tester.F[1] = f_to_b(4.0)

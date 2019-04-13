@@ -2,96 +2,7 @@ import sys
 
 sys.path.append("src/")
 from assembler import assemble_instruction, assemble_to_numerical, assemble_to_text, twos_complement
-
-def test_integer_file_instruction_parsing():
-
-    with open('test/integer_instructions.asm') as f:
-        file_contents = f.read()
-
-    # TODO: Fix lw/sw/lb/sb; offset is decimal, not hex
-    expected = [
-        "add $r1 $r2 $r3",
-        "addi $r4 $r8 0x123",
-        "sub $r1 $r2 $r3",
-        "sll $r5 $r6 0x12",
-        "srl $r5 $r6 0x12",
-        "mult $r3 $r4",
-        "div $r3 $r4",
-        "and $r1 $r2 $r3",
-        "andi $r1 $r2 0x01",
-        "or $r1 $r2 $r3",
-        "ori $r1 $r2 0x04",
-        "xor $r1 $r2 $r4",
-        "xori $r1 $r2 0x04",
-        "nor $r1 $r2 $r4",
-        "beq $r1 $r2 0x1234",
-        "bne $r1 $r2 0x1234",
-        "bgez $r1 0x1234",
-        "blez $r1 0x1234",
-        "bgtz $r2 0x4567",
-        "bltz $r2 0x4567",
-        "j 0x3456",
-        "jal 0x3456",
-        "jr $r3",
-        "slt $r1 $r2 $r3",
-        "slti $r1 $r2 0x1234",
-        "lw $r1 0x04($r3)",
-        "sw $r1 0x04($r3)"
-    ]
-    instructions, data = assemble_to_text(file_contents)
-    assert(instructions == expected)
-
-
-def test_integer_file_instruction_assembly():
-
-    with open('test/integer_instructions.asm') as f:
-        file_contents = f.read()
-
-    expected = [
-        0b00000000010000110000100000100000,
-        0b00100001000001000000000100100011,
-        0b00000000010000110000100000100010,
-        0b00000000000001100010110010000000,
-        0b00000000000001100010110010000010,
-        0b00000000011001000000000000011000,
-        0b00000000011001000000000000011010,
-        0b00000000010000110000100000100100,
-        0b00110000010000010000000000000001,
-        0b00000000010000110000100000100101,
-        0b00110100010000010000000000000100,
-        0b00000000010001000000100000100110,
-        0b00111000010000010000000000000100,
-        0b00000000010001000000100000100111,
-        0b00010000001000100001001000110100,
-        0b00010100001000100001001000110100,
-        0b00000100001000010001001000110100,
-        0b00011000001000000001001000110100,
-        0b00011100010000000100010101100111,
-        0b00000100010000000100010101100111,
-        0b00001000000000000011010001010110,
-        0b00001100000000000011010001010110,
-        0b00000000011000000000000000001000,
-        0b00000000010000110000100000101010,
-        0b00101000010000010001001000110100,
-        0b10001100011000010000000000000100,
-        0b10101100011000010000000000000100
-    ]
-    instructions, data = assemble_to_numerical(file_contents)
-    assert(instructions == expected)
-
-def test_instructions_with_labels():
-
-    # This file has labels
-    with open('test/jump_to_label_instructions.asm') as f:
-        file_contents = f.read()
-
-    expected = ["add $r1 $r2 $r3",  # mem: 0x0
-                "j 2",            # mem: 0x4
-                "add $r1 $r2 $r3"]  # mem: 0x8
-
-    # Test whether label maps to correct memeory address
-    instructions, data = assemble_to_text(file_contents)
-    assert(instructions == expected)
+from utils import f_to_b
 
 def test_add():
     assert(assemble_instruction("add $r1 $r2 $r3")
@@ -274,3 +185,116 @@ def test_mfhi():
 def test_mflo():
     assert(assemble_instruction("mflo $r1")
            == 0b00000000000000000000100000010010)
+
+def test_integer_file_instruction_parsing():
+
+    with open('test/integer_instructions.asm') as f:
+        file_contents = f.read()
+
+    # TODO: Fix lw/sw/lb/sb; offset is decimal, not hex
+    expected = [
+        "add $r1 $r2 $r3",
+        "addi $r4 $r8 0x123",
+        "sub $r1 $r2 $r3",
+        "sll $r5 $r6 0x12",
+        "srl $r5 $r6 0x12",
+        "mult $r3 $r4",
+        "div $r3 $r4",
+        "and $r1 $r2 $r3",
+        "andi $r1 $r2 0x01",
+        "or $r1 $r2 $r3",
+        "ori $r1 $r2 0x04",
+        "xor $r1 $r2 $r4",
+        "xori $r1 $r2 0x04",
+        "nor $r1 $r2 $r4",
+        "beq $r1 $r2 0x1234",
+        "bne $r1 $r2 0x1234",
+        "bgez $r1 0x1234",
+        "blez $r1 0x1234",
+        "bgtz $r2 0x4567",
+        "bltz $r2 0x4567",
+        "j 0x3456",
+        "jal 0x3456",
+        "jr $r3",
+        "slt $r1 $r2 $r3",
+        "slti $r1 $r2 0x1234",
+        "lw $r1 0x04($r3)",
+        "sw $r1 0x04($r3)"
+    ]
+    instructions, data = assemble_to_text(file_contents)
+    assert(instructions == expected)
+
+
+def test_integer_file_instruction_assembly():
+
+    with open('test/integer_instructions.asm') as f:
+        file_contents = f.read()
+
+    expected = [
+        0b00000000010000110000100000100000,
+        0b00100001000001000000000100100011,
+        0b00000000010000110000100000100010,
+        0b00000000000001100010110010000000,
+        0b00000000000001100010110010000010,
+        0b00000000011001000000000000011000,
+        0b00000000011001000000000000011010,
+        0b00000000010000110000100000100100,
+        0b00110000010000010000000000000001,
+        0b00000000010000110000100000100101,
+        0b00110100010000010000000000000100,
+        0b00000000010001000000100000100110,
+        0b00111000010000010000000000000100,
+        0b00000000010001000000100000100111,
+        0b00010000001000100001001000110100,
+        0b00010100001000100001001000110100,
+        0b00000100001000010001001000110100,
+        0b00011000001000000001001000110100,
+        0b00011100010000000100010101100111,
+        0b00000100010000000100010101100111,
+        0b00001000000000000011010001010110,
+        0b00001100000000000011010001010110,
+        0b00000000011000000000000000001000,
+        0b00000000010000110000100000101010,
+        0b00101000010000010001001000110100,
+        0b10001100011000010000000000000100,
+        0b10101100011000010000000000000100
+    ]
+    instructions, data = assemble_to_numerical(file_contents)
+    assert(instructions == expected)
+
+def test_instructions_with_labels():
+
+    # This file has labels
+    with open('test/jump_to_label_instructions.asm') as f:
+        file_contents = f.read()
+
+    expected = ["add $r1 $r2 $r3",  # mem: 0x0
+                "j 2",            # mem: 0x4
+                "add $r1 $r2 $r3"]  # mem: 0x8
+
+    # Test whether label maps to correct memeory address
+    instructions, data = assemble_to_text(file_contents)
+    assert(instructions == expected)
+
+def test_data_with_array():
+
+    instructions = """
+        .text
+    main:
+        lw array
+
+        .data
+    array: [1, 2, 3, 0x4, 0x5, 0b110, 7.0]
+    """
+    # Data is map of memory line to memory value
+    # Since lw will be stored at line 0, data should be stored in order
+    # at lines 1-8
+    # Following memory addresses should have each word / single
+    instructions, data = assemble_to_text(instructions)
+    assert(data[1] == 1)
+    assert(data[2] == 2)
+    assert(data[3] == 3)
+    assert(data[4] == 4)
+    assert(data[5] == 5)
+    assert(data[6] == 6)
+    assert(data[7] == f_to_b(7.0))

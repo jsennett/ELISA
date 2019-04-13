@@ -18,10 +18,7 @@ associativity, cache size, and words per line. - Done, I think.
     - Add docstrings
     - Customize / prepare for demos
 """
-import sys
 import random
-import logging
-# logging.basicConfig(level=logging.INFO)
 
 
 class Memory:
@@ -38,7 +35,14 @@ class Memory:
     """
 
     def __init__(self, lines, delay=10, noisy=False, name="Memory"):
-        """Initialize a Memory object."""
+        """Initialize a Memory object
+
+        Args:
+            lines (int):  lines of data (each line being 4 bytes)
+            delay (int):  number of cycles it takes for memory access
+            noisy (bool): whether to pause after each cycle
+            name  (str):  a handle for the object
+        """
         self.lines = lines
         self.address_length = lines.bit_length() - 1
         self.data = [0] * lines
@@ -63,7 +67,6 @@ class Memory:
                 or
             str: a message to wait
         """
-        # logging.info('read()')
         # If delay remains
         if self.current_delay > 0:
             self.current_delay -= 1
@@ -165,11 +168,17 @@ class Cache:
         valid_bit_index (int): location of valid bit in line
         words_per_line (int): words per line
 
-    # TODO: Enforce that all levels of cache have the same number of words per line
     """
     def __init__(self, lines, words_per_line=4, delay=3, associativity=1,
                  next_level=None, noisy=False, name="Cache"):
-        """Initialize a Cache object."""
+        """Initialize a Cache object.
+
+        Args:
+            words_per_line (int): words per line
+            associativity (int): associativity level
+            next_level (pointer): pointer to the next level of memory
+        """
+
         self.lines = lines
         self.words_per_line = words_per_line
         self.associativity = associativity
@@ -197,12 +206,10 @@ class Cache:
             words_requested (int): How many words to return (line size)
             only_byte (boolean): Whether to read only a byte or a whole word
 
-        Returns: list: A block of values including that memory address
+        Returns:
+            list: A block of values including that memory address
                 or
             str: a message to wait
-
-        # TODO: change words_requested to be either single word or full block;
-        # and not flexible number of words
         """
         # If delay remains
         if self.current_delay > 0:
@@ -262,8 +269,6 @@ class Cache:
             # If a single byte is requested
             if only_byte:
                 byte = (self.data[row_location][1 + word_offset] >> (8 * byte_offset)) & 0xFF
-                print('cache word found:', self.data[row_location][1 + word_offset])
-                print('cache byte found:', byte)
                 return [byte]
 
             # If a single word is requested
