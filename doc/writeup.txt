@@ -1,0 +1,115 @@
+[ ]   Yash - Describes the architecture (a revision of the earlier report that reflects changes and clarifications that arise later)
+[ ]   Yash  Presents the performance results of running the benchmarks on the different simulator configurations
+[ ]   Josh - Describes the simulator (it’s overall design, and a user manual)
+
+The ELISA simulator allows users to see a program executed step-by-step, providing insight into how assembly is converted to machine code, how instructions pass through the data pipeline, and how registers, cache, and memory are updated over time. In addition, the simulator allows users to configure cache, memory, and pipeline settings, allowing users to visualize how these configurations affect performance.
+
+How ELISA Works:
+The full ELISA codebase has five primary modules which interact to provide the full functionality of the simulator. The assembler module (`assembler.py`) contains methods to assemble programs, including utilities such as calculating the two's complement of a number and converting between floating point and binary (using IEEE 754 standard). The memory module `memory.py` contains Cache and Memory classes which simulate the ELISA memory model, interfaced using `read()` and `write()` functions. The simulator module `simulator.py` contains a single Simulator class with the logic for each pipeline stage; a Simulator instance is interfaced using `step()` method to step a single cycle, and a `set_instructions()` method which loads machine code instructions and data into memory. The GUI view is specified in the `gui/mainwindow.py` file. Last the GUI controller (`gui.py`) integrates the previous four components into a single application, providing an interactive interface to the Simulator, Memory & Cache, and Assembler displayed in the graphical view.
+
+Assembler:
+The ELISA assembler converts a file into a list of numerical instructions; the full instruction set and syntax is specified in Appendix X. The assembler uses two passes; the first to parse labels, and the second to convert lines to machine code. The assembler supports the following features:
+- Comments and empty lines are stripped
+- Data specified in a `.data` section is loaded into memory
+- Data types are inferred automatically (negative int -> two's complement; float -> IEEE 754)
+- Labels are converted to calculated targets or offsets based on instruction type
+- Integer registers can be specified using register number or MIPS nickname (e.g. $zero or $r0, $t0 = $r8, $ra = $r31)
+- Assembling a file with syntax errors will raise an error pointing to the error-raising line
+
+We developed a comprehensive test suite (`test/test_assembler.py`) to ensure that these features worked correctly, and that each instruction is correctly assembled.
+
+Memory:
+The memory module is designed to simulate memory and cache independently from the ELISA simulator, which makes it easy to integrate into other ISA simulators or usable on its own. The Memory class supports the following configuration options:
+- lines (int): lines of data (each line being 4 bytes)
+- delay (int): number of cycles it takes for a memory access (read or write)
+- noisy (bool, default=False): If noisy, the Memory class will pause after each cycle
+- name (str, optional): a handle for the object
+
+Cache:
+The Cache class is designed as a write-through no-allocate cache with random eviction. It supports the same configuration options as the Memory class, in addition to:
+- words_per_line (int): words per line
+- associativity (int): associativity level (e.g. 1 for direct-mapped, n for n-way set associative)
+- next_level (pointer): pointer to the next level of memory (where reads will be requested and writes will be forwarded)
+
+To invoke a `read()` or `write()` to memory or cache, you must indicate the number of words requested and whether you are reading or writing a word or a byte. For example, for Memory instance DRAM, DRAM.read(0x5, words_requested=4) will return a block of four words (from 0x0 to 0x1c); DRAM.read(0x5, words_requested=1) will return a single word (from 0x4); and DRAM.read(0x5, only_byte=True) will return the byte (from 0x5).
+
+Simulator:
+The Simulator class simulates a computer, and is interfaced with a simple `step()` function. A Simulator's attributes include a memory heirarchy (an array of Memory/Cache objects), as well as integer and floating point registers, a pipeline buffer array, a destination table for data dependencies, a pipeline-enabled attribute, and a few attributes to track the progress of multi-cycle ALU operations.
+
+Pipeline Stages:
+The ELISA architecture follows the MIPS five-stage pipeline design. The pipeline is implemented by "pulling" data from stage to stage in reverse order; a step() invocation calls the write-back stage, which calls the memory stage, and so on. The pipeline buffer array contains four elements, each containing a tuple of integers output from the previous stage and input into the next stage. For example, the memory stage acts based on the contents of buffer[2] (from the execute stage) and outputs its results to buffer[3] (for the write-back stage. The exceptions, of course, are that the instruction-fetch stage receives input by requesting data from the top level of the memory heirarchy, while the write-back stage writes to registers rather than a buffer.
+
+If a pipeline stage needs to stall the pipeline (for example, if the instruction-decode stage detects a data dependency or if the memory-access stage is waiting for results), the stage writes a no-op into its output buffer and does not invoke the previous stage, simulating a structural hazard. To simulate disabling the pipeline, a simulator will wait until the instruction-fetch stage has been invoked five times before it is actually allowed to fetch from memory.
+
+Testing:
+Within each stage, the input from the stage's input buffer determines what operation or procedure will be done, in addition to "side-effects" beyond the buffer (for example, jumps and branches taken cause the pipeline buffer to be flushed and the PC to be modified, while certain instructions modify the condition code register). Due to the complexity of the pipeline stages, we found it incredibly useful to develop a comprehensive test suite for the simulator. The `test/test_instructions.py` and `test/test_simulator.py` test each instruction at least once, which helped us quickly identify bugs in our simulator's logic.
+
+Programming Interface:
+The Simulator class can be used programatically, allowing users the most flexibility when designing a custom simulation. For example, we used our Simulator class to create a subclass for unit testing instructions. The following code defines a SingleInstructionSimulator class as a Simulator with no cache, a single instruction, and registers preset to values 0-31.
+
+```python
+class SingleInstructionSimulator(Simulator):
+    """A basic simulator used for testing single instructions"""
+    def __init__(self, instruction):
+        super().__init__()
+        DRAM = Memory(lines=2**8, delay=0)
+        self.memory_heirarchy = [DRAM]
+        instructions, data = assemble_to_numerical(instruction)
+        self.set_instructions(instructions)
+        self.R = list(range(32))
+```
+
+Graphical User Interface Overview
+We also provide a graphical interface to the ELISA simulator. The simulator's graphical user interface (GUI) contains three sections (see Figure X).
+
+Data section:
+The data section displays register, memory, and cache contents in three tabs. In the register table, each cell refers to a single register's contents denoted by the row and column headers. In the memory table, each row is a word in memory (containing a single word). In the cache table, each row is a cache line; columns denote which level of cache the line refers to, the line index, and the line contents (separated by tag, valid bit, and words). The cache and memory tables will update based on the current configuration; for example, additional columns are added to the cache table if the user increases the number of words per line, and the number of rows for memory and cache tables adjusts to match the size of memory and cache set by the user.
+
+Instruction section:
+The instruction section contains a code editor, an instruction table, and a pipeline table. A user can import a program into the code editor, modify the current code, and export (save) the modified code. When the program is ready to be loaded into the assembler, the user must press the "Load Instructions" button, which will assemble the current contents of the code editor into machine code. If an instruction is incorrectly specified and raises an error, a dialog box will pop-up to display where the error occured. If all instructions are correctly specified, the assembled instructions will be loaded into the instructions table. The instructions table contains the memory address, text instruction, hex instruction, and a breakpoint indicator for each instruction. Breakpoints can be specified using the "Add Breakpoint" and "Remove Breakpoint" buttons, where breakpoints refer to the row number in the instruction table. Users can run instructions by pressing one of the "Step" buttons to either step one cycle, step N cycles, step until next breakpoint, or step until program completion. An breakpoint is reached when the simulator's program counter matches the instruction's memory address (i.e. when the instruction is fetched). If no breakpoint is specified or if the program never reaches the breakpoint, the Step until Breakpoint button will step until program completion. The pipeline table contains the current contents of the simulator buffer, along with useful information about the simulator such as the current memory and cache configuration, register dependences, and a status message containing information from each pipeline stage.
+
+Configuration section: 
+The third section provides the user with an interface to configure cache, memory, and pipeline settings. While the programmable simulator can technically support any number of levels of cache, the GUI allows users to enable up to three cache levels to keep the display simple and decluttered. For each level of cache, the user can customize the cache's associativity, size, words per line, and delay; as well as memory size and delay; and whether pipelining is enabled or disabled. The "Set Configuration" button will apply these settings to the simulator, update the memory and cache tables in the data section, and will reset the simulator's program counter and register, cache, and memory contents to initial values.
+
+The GUI also provides the following functionality:
+- Save and restore an in-progress program; saving fully serializes the simulator including all configuration settings as well as the register, cache, memory, and pipeline data needed to restore and continue running a program. Restoring a program will deserialize the simulator and update the GUI so the program can continue running. 
+- The GUI validates input, preventing you from even typing invalid characters in several fields. For example, cache size and delay do not permit typing non-digit characters.  
+- Invalid combinations of input will raise an error dialog box (for example, if the level of associativity is greater than the number of lines in cache)
+
+Figure X: Image of GUI with sections labeled A/B/C.
+
+[ ]   Josh - Specifies the software engineering methods used
+We developed ELISA using Git for version control (publicly available at github.com/jsennett/ELISA), Our typical workflow would be to create feature branches that, once tested, would be merged with a master branch. We approached coding using test-driven development; specifically, we used Pytest (https://doc.pytest.org/) to create unit test suites. We ended with 121 (XX - see if changed) unit tests in total for our assembler, simulator, and memory modules. In addition, as demoed in class, we developed assembly scripts that tested correctness of each type of instruction as sort of bootstrapped unit tests.
+
+We designed ELISA to be modular; the assembler and memory classes are independent subcomponents that integrate with the simulator, but work independently too and could be swapped with similar components. Our design fits the Model-View-Controller paradigm, making it easy to use the same simulator with different views (programmatically or through the GUI). Last, we designed ELISA to have a very simple programmable interface; you can assemble and run a program in just a few lines (see Figure X [the SingleInstructionSimulator subclass]).
+
+[ ]   Josh - Concludes with a summary of what you have learned from the project and from experimenting with the simulator
+This project was extremely valuable learning experience for us to learn the MIPS architecture and assembly language in detail. While it is one of the simplier architectures, it was really interesting to learn about all of the different components that make up an instruction set and an architecture.
+
+There were two turning points in this project. In March, we implemented most of the functionality of the GUI and the simulator. At a certain point, we found certain parts of the simulator easier to understand and debug by using the GUI, since we display the contents of the pipeline buffer between each pipeline stage. Then, in early April, we finished encoding and implementing the full instruction set and the GUI. We had developed an assembly program and started re-running it with different configurations; for example, with and without pipelining, with varying levels of cache associativity, and with varying delay for memory access. It was very rewarding to find that ELISA was not only working, but that it was actually useful--in the first case as an assembly debugging tool, and in the second as a way to understand the impact of memory, cache, and pipelining configuration on program performance. 
+
+From the benchmarks, we learned: TODO - fill in with results.
+
+[ ]   Both - Lists the efforts by person: who ended up doing what on the project
+
+Pair Programming:
+    Overall design of the Simulator class
+    Simulator pipeline design
+    Support for cache associativity
+    Assembly script to demo partial ISA (mid-march)
+    Assembly script to demo full ISA
+    TODO - Yash fill in whatever I left out
+  
+Josh independently:
+    Assembler + assembler test suites
+    Overall design of the Memory and Cache classes
+    Graphical user interface
+    Interactive script to demo memory
+    Utils (float-binary converter, twos-complement converter)
+    Exchange sort benchmark 
+    Implementation of half of the instructions
+    Final report sections: Simulator Design, Software Engineering Methods, Conclusion
+
+Yash independently:
+    TODO - Yash fill this in
+
