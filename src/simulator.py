@@ -794,6 +794,10 @@ class Simulator:
             elif opcode == 0b000100:
                 # If branch is taken
                 if s == t:
+                    # "Sign extension"
+                    if (immediate >> 31 == 1):
+                        immediate = -1*(immediate ^ 0xFFFFFFFF)-1
+                    
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX beq, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
@@ -805,6 +809,9 @@ class Simulator:
             elif opcode == 0b000101:
                 # If branch is taken
                 if s != t:
+                    # "Sign extension"
+                    if (immediate >> 31 == 1):
+                        immediate = -1*(immediate ^ 0xFFFFFFFF)-1
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bne taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
@@ -816,6 +823,9 @@ class Simulator:
             elif opcode == 0b000001 and t == 1:
                 # If branch is taken
                 if s >= 0:
+                    # "Sign extension"
+                    if (immediate >> 31 == 1):
+                        immediate = -1*(immediate ^ 0xFFFFFFFF)-1
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bgez, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
@@ -827,6 +837,9 @@ class Simulator:
             elif opcode == 0b000110:
                 # If branch is taken
                 if s <= 0:
+                    # "Sign extension"
+                    if (immediate >> 31 == 1):
+                        immediate = -1*(immediate ^ 0xFFFFFFFF)-1
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX blez, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
@@ -838,6 +851,9 @@ class Simulator:
             elif opcode == 0b000111:
                 # If branch is taken
                 if s > 0:
+                    # "Sign extension"
+                    if (immediate >> 31 == 1):
+                        immediate = -1*(immediate ^ 0xFFFFFFFF)-1
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bgtz, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM
@@ -849,6 +865,9 @@ class Simulator:
             elif opcode == 0b000001 and t == 0:
                 # If branch is taken
                 if s < 0:
+                    # "Sign extension"
+                    if (immediate >> 31 == 1):
+                        immediate = -1*(immediate ^ 0xFFFFFFFF)-1
                     execute_results = [opcode, PC - 4 + (immediate << 2)]
                     self.status = "EX bltz, taken; " + self.status
                 # If branch is not taken push a noop (nothing occurs during MEM

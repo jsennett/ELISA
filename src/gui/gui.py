@@ -402,7 +402,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         try:
             # Parse text into assembly instructions
             text_instructions, data = assembler.assemble_to_text(code)
-
+            
             # Convert assembly into machine code
             numerical_instructions, data = assembler.assemble_to_numerical(code)
 
