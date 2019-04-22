@@ -20,8 +20,6 @@ logging.basicConfig(level=logging.WARNING)
 
 def assemble_instruction(text_instruction):
     """Convert text instruction to machine code"""
-    # print('parsing:', text_instruction)
-    """Convert a string instruction into a numerical instruction"""
     split_instruction = text_instruction.split()
     numerical_instruction = -1  # error value
 
@@ -43,8 +41,6 @@ def assemble_instruction(text_instruction):
             d = parse_register(split_instruction[2])
             shift = parse_register(split_instruction[1])
             funct = function_codes.get(mnemonic)
-            print(mnemonic, s, t, d, shift, funct)
-            print(mnemonic, bin(s), bin(t), bin(d), bin(shift), bin(funct))
 
         elif mnemonic == 'cvt.w.s':
             s = 0x10
@@ -160,7 +156,6 @@ def assemble_instruction(text_instruction):
         address = parse_immediate(split_instruction[1], 26)
         numerical_instruction = (opcode << 26) + address
 
-    print('parsed:', text_instruction)
     return numerical_instruction
 
 
@@ -179,7 +174,6 @@ def parse_register_and_shift(operand):
 
     # If no shift is
     else:
-        print(operand)
         shift = 0
         reg = int(''.join([x for x in operand if x.isdigit()]))
     return reg, shift
@@ -353,7 +347,6 @@ def assemble_to_text(text):
 
         lines_with_memory_locations.append(line)
 
-    print(lines_without_labels)
     return lines_with_memory_locations, data
 
 
@@ -361,7 +354,6 @@ def assemble_to_numerical(text):
     """Convert a string (such as file contents) into a list of
     numerical instructions"""
     text_instructions, data = assemble_to_text(text)
-    print(text_instructions, data)
     numerical_instructions = []
     for line in text_instructions:
         try:
