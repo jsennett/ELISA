@@ -20,9 +20,9 @@ Remaining steps
 
 Final Report
 [ ]   Yash - Describes the architecture (a revision of the earlier report that reflects changes and clarifications that arise later)
-[ ]   Josh - Describes the simulator (it’s overall design, and a user manual)
-[ ]   Josh - Specifies the software engineering methods used
-[ ]   Both - Lists the efforts by person: who ended up doing what on the project
+[-]   Josh - Describes the simulator (it’s overall design, and a user manual)
+[X]   Josh - Specifies the software engineering methods used
+[X]   Both - Lists the efforts by person: who ended up doing what on the project
 [ ]   Yash  Presents the performance results of running the benchmarks on the different simulator configurations
-[ ]   Josh - Concludes with a summary of what you have learned from the project and from experimenting with the simulator
+[-]   Josh - Concludes with a summary of what you have learned from the project and from experimenting with the simulator
 
