@@ -5,9 +5,9 @@ ELISA is a general purpose instruction set architecture written in Python and ba
 
 ### Features
 1. User-friendly GUI to view step by step how an ELISA program is executed
-2. A real assembler 
-3. Customizable memory heirarchy! Simulate a program with up to three levels of caching, and customize cache size, associativity, and delay.
-4. Benchmark tests written in ELISA assembly, including exchange sort and matrix multiplication.
+2. A full ELISA assembler 
+3. Customizable memory heirarchy! Simulate a program with up to three levels of caching, and customize cache size, associativity, and delay
+4. Benchmark tests written in ELISA assembly, including exchange sort and matrix multiplication
 5. GUI views of memory, assembled instructions, and pipeline internals
 5. A full code editor, if you want to hack away in assembly
 6. The ability to add breakpoints in your program, run N cycles, or run your program to completion
