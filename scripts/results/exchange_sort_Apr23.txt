@@ -1,0 +1,37 @@
+name,pipeline_enabled,input_size,cycles,correct
+No Caching,True,8,8570,True
+Caching,True,8,1192,True
+No Caching_no_pipelining,False,8,11110,True
+Caching_no_pipelining,False,8,3324,True
+No Caching,True,16,27803,True
+Caching,True,16,3506,True
+No Caching_no_pipelining,False,16,35975,True
+Caching_no_pipelining,False,16,10391,True
+No Caching,True,32,127228,True
+Caching,True,32,15476,True
+No Caching_no_pipelining,False,32,164620,True
+Caching_no_pipelining,False,32,46980,True
+No Caching,True,64,490452,True
+Caching,True,64,59601,True
+No Caching_no_pipelining,False,64,635740,True
+Caching_no_pipelining,False,64,181978,True
+No Caching,True,128,2181774,True
+Caching,True,128,264086,True
+No Caching_no_pipelining,False,128,2827950,True
+Caching_no_pipelining,False,128,808344,True
+No Caching,True,256,9598259,True
+Caching,True,256,1165810,True
+No Caching_no_pipelining,False,256,12455335,True
+Caching_no_pipelining,False,256,3572481,True
+No Caching,True,512,37125235,True
+Caching,True,512,4516809,True
+No Caching_no_pipelining,False,512,48178855,True
+Caching_no_pipelining,False,512,13819185,True
+No Caching,True,1024,154138564,True
+Caching,True,1024,18730953,True
+No Caching_no_pipelining,False,1024,200025780,True
+Caching_no_pipelining,False,1024,57363228,True
+No Caching,True,2048,636015475,True
+Caching,True,2048,77418580,True
+No Caching_no_pipelining,False,2048,825814895,True
+Caching_no_pipelining,False,2048,237257579,True

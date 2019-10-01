@@ -2,32 +2,12 @@ import matplotlib.pyplot as plt
 import csv
 
 
-def generate_sample():
-
-    x = [1, 2, 3, 4, 5, 6, 7, 8]
-    y = [1, 2, 4, 8, 16, 32, 64, 48]
-
-    """
-    with open('example.txt','r') as csvfile:
-        plots = csv.reader(csvfile, delimiter=',')
-        for row in plots:
-            x.append(int(row[0]))
-            y.append(int(row[1]))
-    """
-
-    plt.plot(x,y, label='sample graph')
-    plt.xlabel('x')
-    plt.ylabel('y')
-    plt.title('Interesting Graph\nCheck it out')
-    plt.legend()
-    plt.show()
-
 def generate_exchange_sort_graphs():
     '''name,pipeline_enabled,input_size,cycles,correct'''
 
     data = dict()
 
-    with open("scripts/results/exchange_sort_Apr19_v3.txt") as f:
+    with open("scripts/results/exchange_sort_Apr23.txt") as f:
         rows = csv.reader(f, delimiter=',')
         next(rows) # skip header
 
@@ -57,12 +37,12 @@ def generate_exchange_sort_graphs():
             plt.plot(x, y)
 
 
-        plt.legend(['pipelined', 'not'], loc='upper left')
+        plt.legend(['Pipelined', 'Not'], loc='upper left')
         plt.xlabel('input size')
         plt.ylabel('# Cycles')
         plt.title(name)
-        plt.savefig('scripts/results/{}.png'.format(name))
-        print('scripts/results/{}.png saved'.format(name))
+        plt.savefig('scripts/results/{}_Apr23.png'.format(name))
+        print('scripts/results/{}_Apr23.png saved'.format(name))
         plt.clf()
 
     # Graph combined
@@ -82,16 +62,16 @@ def generate_exchange_sort_graphs():
         print(name, y)
         if len(y) != 0:
             plt.plot(x, y, linestyle=':', color=colors[i])
-            legend.append(name + ' (np)')
+            legend.append(name + ' (No Pipelining)')
 
         i += 1
 
     plt.legend(legend, loc='upper left')
-    plt.xlabel('input size (n = 2**x)')
+    plt.xlabel('input size')
     plt.ylabel('# Cycles')
     plt.title('Exchange Sort Performance')
-    plt.savefig('scripts/results/exchange_sort.png')
-    print('scripts/results/exchange_sort.png')
+    plt.savefig('scripts/results/exchange_sort_Apr23.png')
+    print('scripts/results/exchange_sort_Apr23.png saved')
 
 
 if __name__ == "__main__":
